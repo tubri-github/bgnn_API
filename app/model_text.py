@@ -24,7 +24,7 @@ class Multimeida(Base):
     __tablename__ = 'multimeida'
 
     ark_id = Column(String, primary_key=True)
-    parent_ark_id = Column(String)
+    parent_ark_id = Column(String, ForeignKey("multimeida.ark_id"), nullable=True)
     batch_id = Column(String)
     path = Column(String)
     filename_as_delivered = Column(String)
@@ -34,8 +34,13 @@ class Multimeida(Base):
     license = Column(String)
     source = Column(String)
     owner_institution_code = Column(String)
+    scientific_name = Column(String)
+    genus = Column(String)
+    family = Column(String)
 
+    children = relationship("Multimeida")
     extended_metadata = relationship("ExtendedImageMetadatum", back_populates="ark")
+    quality_metadata = relationship("ImageQualityMetadatum", back_populates="ark_IQ")
 
 
 class Person(Base):
@@ -103,5 +108,5 @@ class ImageQualityMetadatum(Base):
     create_date = Column(String(10))
     metadata_date = Column(String(10))
 
-    ark = relationship('Multimeida')
+    ark_IQ = relationship('Multimeida', back_populates="quality_metadata")
     creator = relationship('Person')

@@ -94,6 +94,7 @@ class ExtendedImageMetadatum(ExtendedImageBase):
     class Config:
         orm_mode = True
 
+
 ##Multimedia##
 class MultimediaBase(BaseModel):
     path: str
@@ -104,17 +105,23 @@ class MultimediaBase(BaseModel):
     license: str
     source: str
     owner_institution_code: str
-
+    scientific_name: str
+    genus: str
+    family: str
 
 
 class Multimedia(MultimediaBase):
     ark_id: str
     parent_ark_id: str
     batch_id: str
-
+    children: List['Multimedia'] = []
 
     class Config:
         orm_mode = True
 
+Multimedia.update_forward_refs()
+
 class MultimediaExtended(Multimedia):
     extended_metadata: List[ExtendedImageMetadatum]
+    quality_metadata: List[IQ]
+
