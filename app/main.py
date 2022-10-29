@@ -122,11 +122,11 @@ async def read_multimedias(genus: str = 'Notropis', skip: int = 0, limit: int = 
         - param zipfile: return JSON or Zip file
         - return: multimedia lists(with associated (meta)data)
     '''
-    iqs = crud.get_multimedias(db, genus=genus, skip=skip, limit=limit)
+    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, skip=skip, limit=limit)
     if zipfile:
-        path, filename = zipfile_generator(iqs)
+        path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "skip": skip, "limit": limit})
         return FileResponse(path=path, filename=filename)
-    return iqs
+    return multimedia_res
 
 
 @router.get("/multimedia/{ark_id}", tags=["Multimedia"], response_model=schemas.MultimediaChild)
@@ -143,17 +143,13 @@ async def read_multimedia(ark_id: str = 'qs243w0c', db: Session = Depends(get_db
 
 
 @router.get("/iq/", tags=["Image Quality Metadata"], response_model=List[schemas.IQ])
-async def read_iqs(skip: int = 0, limit: int = 100, zipfile: bool = False, db: Session = Depends(get_db)):
+async def read_iqs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     '''
         get image quality metadatas
         - param skip: start index
         - param limit: specify the number of records to return
-        - param zipfile: return JSON or Zip file
         - return: image quality metadata lists
     '''
-    if zipfile:
-        path, filename = zipfile_generator()
-        return FileResponse(path=path, filename=filename)
     iqs = crud.get_iqs(db, skip=skip, limit=limit)
     return iqs
 

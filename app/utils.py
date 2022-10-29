@@ -5,6 +5,8 @@ import uuid
 import random
 from . import model_text
 from noid.pynoid import *
+from jinja2 import Template, FileSystemLoader, Environment
+from datetime import datetime
 
 
 ## random + uuid generator
@@ -16,20 +18,30 @@ def random_str(num=6):
     return b
 
 
-def zipfile_generator(results):
+def zipfile_generator(results, batch_results, params):
+    dataset_ark_id = minter(config.ARK_DATASETS)
+    current_date = datetime.now().strftime("%Y-%m-%d")
     zf = zipstream.ZipFile(compression=zipstream.ZIP_DEFLATED)
-    file_list = ["meta.xml", "metadata.xml", "citations.txt", "bgnn_rdf_prototype.owl"]
+    file_list = ["meta.xml", "rdf.owl"]
     for file in file_list:
         basicFilesSourcePath = os.path.join(config.ZIPFILES_PATH, file).replace("\\", "/");
-        basicFilesTargetPath = os.path.join('bgnn', file).replace("\\", "/")
+        basicFilesTargetPath = os.path.join('Tulane/Fish/', file).replace("\\", "/")
         zf.write(basicFilesSourcePath, basicFilesTargetPath, zipstream.ZIP_DEFLATED)
     multimedia_csv = csv_generator(results, type="multimedia")
     extended_metadata_image_csv = csv_generator(results, type="extended")
     quality_metadata_image_csv = csv_generator(results, type="quality")
-    zf.write_iter(os.path.join("bgnn", "multimedia.csv"), iterable(multimedia_csv))
-    zf.write_iter(os.path.join("bgnn", "extendedImageMetadata.csv"), iterable(extended_metadata_image_csv))
-    zf.write_iter(os.path.join("bgnn", "imageQualityMetadata.csv"), iterable(quality_metadata_image_csv))
-    zf.filename = "bgnn_api" + random_str() + ".zip"
+    batch_csv, citation_info = batch_citation_generator(batch_results)
+    metadata_xml = metadata_generator(dataset_ark_id[2],params, current_date )
+    zf.write_iter(os.path.join("Tulane/Fish/", "multimedia.csv"), iterable(multimedia_csv))
+    zf.write_iter(os.path.join("Tulane/Fish/", "extendedImageMetadata.csv"), iterable(extended_metadata_image_csv))
+    zf.write_iter(os.path.join("Tulane/Fish/", "imageQualityMetadata.csv"), iterable(quality_metadata_image_csv))
+    zf.write_iter(os.path.join("Tulane/Fish/", "batch.csv"), iterable(batch_csv))
+
+    zf.write_iter(os.path.join("Tulane/Fish/", "citations.txt"), iterable(citation_info))
+
+    zf.write_iter(os.path.join("Tulane/Fish/", "metadata.xml"), iterable(metadata_xml))
+
+    zf.filename = "TU_FISH_" + dataset_ark_id[2] + ".zip"
     with open(os.path.join(zf.filename), 'wb') as f:
         for data in zf:
             f.write(data)
@@ -47,7 +59,7 @@ def csv_generator(results, type):
                         str(record.format) + ',' + str(record.batch_id) + ',' + str(record.license) + ',' + str(
                 record.source) + ',' + str(record.owner_institution_code) + '\n'
             csv_body += recstring
-        return csv_header + recstring
+        return csv_header + csv_body
     if type == 'extended':
         csv_header = "arkId,fileNameAsDelivered,format,createDate,metadataDate,size,width,height,license,publisher,ownerInstitutionCode\n"
         csv_body = ""
@@ -99,6 +111,44 @@ def csv_generator(results, type):
             csv_body += recstring
         return csv_header + csv_body
 
+def batch_citation_generator(results):
+    # citations
+    citation_firstline = "Multimedia of Fish Specimen and associated metadata. Biology guided Neural Network. Tulane University Biodiversity Research Institute (https://bgnn.tulane.edu).\n"
+    citation_body = ""
+
+    # batch
+    csv_header = "arkId,batchName,institutionCode,pipeline,createDate,modifyDate,creator,creatorComments,contactor,labCode,projectName,codeRepository,datasetName,bibliographicCitation,URL\n "
+    csv_body = ""
+    for record in results:
+        recstring = str(record.ark_id) \
+                    + ',' + str(record.batch_name) \
+                    + ',' + str(record.institution_code) \
+                    + ',' + str(record.pipeline) \
+                    + ',' + str(record.create_date) \
+                    + ',' + str(record.modify_date) \
+                    + ',' + str(record.creator) \
+                    + ',' + str(record.creator_comment) \
+                    + ',' + str(record.contactor) \
+                    + ',' + str(record.lab_code) \
+                    + ',' + str(record.project_name) \
+                    + ',' + str(record.code_repository) \
+                    + ',' + str(record.dataset_name) \
+                    + ',' + str(record.bibliographic_citation) \
+                    + ',' + str(record.url) \
+                    + '\n'
+        csv_body += recstring
+
+        citation_body += record.bibliographic_citation + '\n'
+    batch_content = csv_header + csv_body
+    citation_content = citation_firstline + citation_body
+    return batch_content, citation_content
+
+def metadata_generator(dataset_ark_id, params, current_date):
+    j2_loader = FileSystemLoader(config.ZIPFILES_PATH)
+    env = Environment(loader=j2_loader)
+    metadata_template = env.get_template('./metadata.xml')
+    metadata_content = metadata_template.render(dataset_ark_id = dataset_ark_id, query_params = params, accessDate=current_date)
+    return metadata_content
 
 def iterable(csv):
     yield str.encode(csv)
@@ -106,12 +156,13 @@ def iterable(csv):
 
 def minter(ark_type):
     template = 'bat.eeddeedek'
-    if ark_type == "batch":
+    if ark_type == config.ARK_BATCH:
         template = 'bat.eeddeedek'
-    elif ark_type == "datasets":
-        template = 'dtseeddeedek'
-    elif ark_type == "multimedia":
+    elif ark_type == config.ARK_DATASETS:
+        template = 'dts.eeddeedek'
+    elif ark_type == config.ARK_MULTIMEDIA:
         template = 'eeddeede'
     ark_id = mint(template=template, scheme='ark:/', naa='89609')
+    ark_obj = ark_id.split("/")
 
-    return ark_id
+    return ark_obj

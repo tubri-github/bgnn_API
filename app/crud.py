@@ -64,20 +64,19 @@ def get_iqs(db: Session, skip: int = 0, limit: int = 100):
 
 
 def get_multimedias(db: Session, genus, skip: int = 0, limit: int = 100, ):
-    return (
-        db.query(model_text.Multimeida)
+    multimedia_results = db.query(model_text.Multimeida)\
         .filter(
-            model_text.Multimeida.genus.ilike('%' + genus + '%'),
-            model_text.Multimeida.owner_institution_code == 'INHS'
-            # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
-        )
-        .options(joinedload(model_text.Multimeida.extended_metadata),
-                 joinedload(model_text.Multimeida.quality_metadata),
-                 joinedload(model_text.Multimeida.batch))
-        .offset(skip)
-        .limit(limit)
+        model_text.Multimeida.genus.ilike('%' + genus + '%'),
+        model_text.Multimeida.owner_institution_code == 'INHS'
+        # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
+    ).options(joinedload(model_text.Multimeida.extended_metadata),
+             joinedload(model_text.Multimeida.quality_metadata),
+             joinedload(model_text.Multimeida.batch)).offset(skip)\
+        .limit(limit)\
         .all()
-    )
+    batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(model_text.Multimeida.genus.ilike('%' + genus + '%'),
+                                                      model_text.Multimeida.owner_institution_code == 'INHS').all()
+    return multimedia_results, batch_results
 
 
 def get_multimedia(db: Session, ark_id):
