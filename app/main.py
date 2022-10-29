@@ -110,7 +110,7 @@ def get_db():
 #     items = crud.get_items(db, skip=skip, limit=limit)
 #     return items
 
-@router.get("/multimedias/", tags=["Multimedia"], response_model=List[schemas.MultimediaExtended])
+@router.get("/multimedias/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
 async def read_multimedias(genus: str = 'Notropis', skip: int = 0, limit: int = 20, zipfile: bool = False,
                            db: Session = Depends(get_db)
                            ):
@@ -128,14 +128,15 @@ async def read_multimedias(genus: str = 'Notropis', skip: int = 0, limit: int = 
         return FileResponse(path=path, filename=filename)
     return iqs
 
-@router.get("/multimedia/", tags=["Multimedia"], response_model=schemas.MultimediaExtended)
-async def read_multimedia(arkid: str = 'qs243w0c', db: Session = Depends(get_db)):
+
+@router.get("/multimedia/{ark_id}", tags=["Multimedia"], response_model=schemas.MultimediaChild)
+async def read_multimedia(ark_id: str = 'qs243w0c', db: Session = Depends(get_db)):
     '''
-     get multimedia and associated (meta)data, like IQ, extended metadata, hirecachy medias by ARK ID
-    :param arkid: ark id
-    :return: multimedia entity
+         get multimedia and associated (meta)data, like IQ, extended metadata, hirecachy medias by ARK ID
+    - param arkid: ark id (exp: qs243w0c)
+    - return: multimedia entity
     '''
-    iqs = crud.get_multimedia(db, ark_id=arkid)
+    iqs = crud.get_multimedia(db, ark_id=ark_id.strip())
     if iqs is None:
         raise HTTPException(status_code=404, detail="Image Not Found")
     return iqs

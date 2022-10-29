@@ -22,8 +22,10 @@ def zipfile_generator(results):
         zf.write(basicFilesSourcePath, basicFilesTargetPath, zipstream.ZIP_DEFLATED)
     multimedia_csv = csv_generator(results, type="multimedia")
     extended_metadata_image_csv = csv_generator(results, type="extended")
+    quality_metadata_image_csv = csv_generator(results, type="quality")
     zf.write_iter(os.path.join("bgnn","multimedia.csv"), iterable(multimedia_csv))
     zf.write_iter(os.path.join("bgnn","extendedImageMetadata.csv"), iterable(extended_metadata_image_csv))
+    zf.write_iter(os.path.join("bgnn","imageQualityMetadata.csv"), iterable(quality_metadata_image_csv))
     zf.filename = "bgnn_api" + random_str() + ".zip"
     with open(os.path.join(zf.filename), 'wb') as f:
         for data in zf:
@@ -47,6 +49,43 @@ def csv_generator(results,type):
             recstring = str(record.extended_metadata[0].ark_id) + ',' + str(record.filename_as_delivered) + ',' + str(
             record.format ) + ',' + str(record.extended_metadata[0].create_date) + ',' + str(record.extended_metadata[0].metadata_date) +  ',' + str(record.extended_metadata[0].size) + ',' +\
                     str(record.extended_metadata[0].width) +  ',' + str(record.extended_metadata[0].height) +  ',' + str(record.extended_metadata[0].license) +  ',' + str(record.extended_metadata[0].publisher) +  ',' + str(record.extended_metadata[0].owner_institution_code) + '\n'
+            csv_body += recstring
+        return csv_header + csv_body
+    if type == 'quality':
+        csv_header = "arkID,license,publisher,ownerInstitutionCode,createDate,metadataDate,specimenQuantity," \
+                     "containsScaleBar,containsLabel,accessionNumberValidity,containsBarcode,containsColorBar," \
+                     "nonSpecimenObjects,partsOverlapping,specimenAngle,specimenView,specimenCurved,partsMissing," \
+                     "allPartsVisible,partsFolded,brightness,uniformBackground,onFocus,colorIssue,quality," \
+                     "resourceCreationTechnique\n "
+        csv_body = ""
+        for record in results:
+            recstring = str(record.quality_metadata[0].ark_id) \
+                        + ',' + str(record.quality_metadata[0].license) \
+                        + ',' + str(record.quality_metadata[0].publisher) \
+                        + ',' + str(record.quality_metadata[0].owner_institution_code) \
+                        + ',' + str(record.quality_metadata[0].create_date) \
+                        + ',' + str(record.quality_metadata[0].metadata_date) \
+                        + ',' + str(record.quality_metadata[0].specimen_quantity) \
+                        + ',' + str(record.quality_metadata[0].contains_scalebar) \
+                        + ',' + str(record.quality_metadata[0].contains_label) \
+                        + ',' + str(record.quality_metadata[0].accession_number_validity) \
+                        + ',' + str(record.quality_metadata[0].contains_barcode) \
+                        + ',' + str(record.quality_metadata[0].contains_colorbar) \
+                        + ',' + str(record.quality_metadata[0].non_specimen_objects) \
+                        + ',' + str(record.quality_metadata[0].parts_overlapping) \
+                        + ',' + str(record.quality_metadata[0].specimen_angle) \
+                        + ',' + str(record.quality_metadata[0].specimen_view) \
+                        + ',' + str(record.quality_metadata[0].specimen_curved) \
+                        + ',' + str(record.quality_metadata[0].parts_missing) \
+                        + ',' + str(record.quality_metadata[0].all_parts_visible) \
+                        + ',' + str(record.quality_metadata[0].parts_folded) \
+                        + ',' + str(record.quality_metadata[0].brightness) \
+                        + ',' + str(record.quality_metadata[0].uniform_background) \
+                        + ',' + str(record.quality_metadata[0].on_focus) \
+                        + ',' + str(record.quality_metadata[0].color_issue) \
+                        + ',' + str(record.quality_metadata[0].quality) \
+                        + ',' + str(record.quality_metadata[0].data_capture_method) \
+                        + '\n'
             csv_body += recstring
         return csv_header + csv_body
 

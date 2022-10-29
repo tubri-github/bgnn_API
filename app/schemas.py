@@ -40,7 +40,7 @@ class User(UserBase):
 
 ##IQ##
 class IQBase(BaseModel):
-    ark_id: str
+    # ark_id: str
     specimen_quantity: int
     non_specimen_objects = str
     contains_scalebar: bool
@@ -119,9 +119,14 @@ class Multimedia(MultimediaBase):
     class Config:
         orm_mode = True
 
-Multimedia.update_forward_refs()
 
 class MultimediaExtended(Multimedia):
     extended_metadata: List[ExtendedImageMetadatum]
     quality_metadata: List[IQ]
 
+
+class MultimediaChild(MultimediaExtended):
+    parent: Optional['MultimediaChild']
+
+
+Multimedia.update_forward_refs()

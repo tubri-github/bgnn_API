@@ -1,6 +1,6 @@
 # coding: utf-8
 from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String, Time
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -38,7 +38,9 @@ class Multimeida(Base):
     genus = Column(String)
     family = Column(String)
 
-    children = relationship("Multimeida")
+    # children = relationship("Multimeida")
+    children = relationship("Multimeida", backref=backref("parent", remote_side=[ark_id]))
+
     extended_metadata = relationship("ExtendedImageMetadatum", back_populates="ark")
     quality_metadata = relationship("ImageQualityMetadatum", back_populates="ark_IQ")
 
