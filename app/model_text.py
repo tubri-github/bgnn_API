@@ -10,14 +10,24 @@ metadata = Base.metadata
 class Batch(Base):
     __tablename__ = 'batch'
 
-    batch_id = Column(String, primary_key=True)
+    ark_id = Column(String, primary_key=True)
     batch_name = Column(String)
     institution_code = Column(String)
     pipeline = Column(String)
     create_date = Column(Time(True))
-    update_date = Column(Time(True))
-    uploader_id = Column(String)
-    citation = Column(String)
+    modify_date = Column(Time(True))
+    creator_comment = Column(String)
+    contactor = Column(String)
+    lab_code = Column(String)
+    project_name = Column(String)
+    code_repository = Column(String)
+    url = Column(String)
+    identifier = Column(String)
+    dataset_name = Column(String)
+    bibliographic_citation = Column(String)
+    creator = Column(String)
+
+    # ark_batch = relationship('Multimeida', back_populates="batch")
 
 
 class Multimeida(Base):
@@ -26,6 +36,7 @@ class Multimeida(Base):
     ark_id = Column(String, primary_key=True)
     parent_ark_id = Column(String, ForeignKey("multimeida.ark_id"), nullable=True)
     batch_id = Column(String)
+    batch_ark_id = Column(String, ForeignKey("batch.ark_id"), nullable=True)
     path = Column(String)
     filename_as_delivered = Column(String)
     format = Column(String)
@@ -43,6 +54,7 @@ class Multimeida(Base):
 
     extended_metadata = relationship("ExtendedImageMetadatum", back_populates="ark")
     quality_metadata = relationship("ImageQualityMetadatum", back_populates="ark_IQ")
+    batch = relationship("Batch")
 
 
 class Person(Base):

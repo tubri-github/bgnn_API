@@ -72,7 +72,8 @@ def get_multimedias(db: Session, genus, skip: int = 0, limit: int = 100, ):
             # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
         )
         .options(joinedload(model_text.Multimeida.extended_metadata),
-                 joinedload(model_text.Multimeida.quality_metadata))
+                 joinedload(model_text.Multimeida.quality_metadata),
+                 joinedload(model_text.Multimeida.batch))
         .offset(skip)
         .limit(limit)
         .all()

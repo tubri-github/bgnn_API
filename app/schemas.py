@@ -110,6 +110,31 @@ class MultimediaBase(BaseModel):
     family: str
 
 
+##Batch
+class BatchBase(BaseModel):
+    batch_name: str
+    institution_code: str
+    pipeline: str
+    # create_date: time
+    # modify_date: time
+    creator_comment: str
+    contactor: str
+    lab_code: str
+    project_name: str
+    url: str
+    identifier: str
+    dataset_name: str
+    bibliographic_citation: str
+    creator: str
+
+
+class BatchMetadatum(BatchBase):
+    ark_id: str
+
+    class Config:
+        orm_mode = True
+
+
 class Multimedia(MultimediaBase):
     ark_id: str
     parent_ark_id: str
@@ -123,6 +148,7 @@ class Multimedia(MultimediaBase):
 class MultimediaExtended(Multimedia):
     extended_metadata: List[ExtendedImageMetadatum]
     quality_metadata: List[IQ]
+    batch: BatchMetadatum
 
 
 class MultimediaChild(MultimediaExtended):
