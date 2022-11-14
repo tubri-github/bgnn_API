@@ -1,7 +1,7 @@
 import json
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, APIRouter
+from fastapi import Depends, FastAPI, HTTPException, APIRouter, Response
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -111,7 +111,7 @@ def get_db():
 #     return items
 
 @router.get("/multimedias/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
-async def read_multimedias(genus: str = 'Notropis', skip: int = 0, limit: int = 20, zipfile: bool = False,
+async def read_multimedias(response: Response, genus: str = 'Notropis', dataset: str = 'INHS', min_height:int = 1000, max_height:int = 1500, skip: int = 0, limit: int = 200, zipfile: bool = False,
                            db: Session = Depends(get_db)
                            ):
     '''
@@ -122,9 +122,10 @@ async def read_multimedias(genus: str = 'Notropis', skip: int = 0, limit: int = 
         - param zipfile: return JSON or Zip file
         - return: multimedia lists(with associated (meta)data)
     '''
-    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, skip=skip, limit=limit)
+    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height,skip=skip, limit=limit)
     if zipfile:
-        path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "skip": skip, "limit": limit})
+        path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height, "skip": skip, "limit": limit})
+        response.headers['X-filename'] = filename
         return FileResponse(path=path, filename=filename)
     return multimedia_res
 

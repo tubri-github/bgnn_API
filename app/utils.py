@@ -50,13 +50,13 @@ def zipfile_generator(results, batch_results, params):
 
 def csv_generator(results, type):
     if type == 'multimedia':
-        csv_header = "arkID,parentArkId,accessURI,createDate,modifyDate,fileNameAsDelivered,format,batchName,license,source,ownerInstitutionCode\n"
+        csv_header = "arkID,parentArkId,accessURI,createDate,modifyDate,fileNameAsDelivered,format,scientificName,genus,family,batchName,license,source,ownerInstitutionCode\n"
         csv_body = ""
         for record in results:
             recstring = str(record.ark_id) + ',' + str(record.parent_ark_id) + ',' + str(
                 record.path) + ',' + str(record.create_date) + ',' + str(record.modify_date) + ',' + str(
-                record.filename_as_delivered) + ',' + \
-                        str(record.format) + ',' + str(record.batch_id) + ',' + str(record.license) + ',' + str(
+                record.filename_as_delivered) + ',' + str(record.format) + ',' +\
+                       str(record.scientific_name)+',' + str(record.genus) + ',' + str(record.family) + ',' + str(record.batch_id) + ',' + str(record.license) + ',' + str(
                 record.source) + ',' + str(record.owner_institution_code) + '\n'
             csv_body += recstring
         return csv_header + csv_body

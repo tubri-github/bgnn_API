@@ -63,11 +63,14 @@ def get_iqs(db: Session, skip: int = 0, limit: int = 100):
     )
 
 
-def get_multimedias(db: Session, genus, skip: int = 0, limit: int = 100, ):
-    multimedia_results = db.query(model_text.Multimeida)\
-        .filter(
+def get_multimedias(db: Session, genus, dataset, max_height: int = 6500, min_height: int = 0, skip: int = 0, limit: int = 200, ):
+    multimedia_results = db.query(model_text.Multimeida).\
+        join(model_text.ExtendedImageMetadatum).\
+        filter(
         model_text.Multimeida.genus.ilike('%' + genus + '%'),
-        model_text.Multimeida.owner_institution_code == 'INHS'
+        model_text.Multimeida.owner_institution_code == dataset,
+        model_text.ExtendedImageMetadatum.height >= min_height,
+        model_text.ExtendedImageMetadatum.height <= max_height
         # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
     ).options(joinedload(model_text.Multimeida.extended_metadata),
              joinedload(model_text.Multimeida.quality_metadata),
@@ -75,7 +78,7 @@ def get_multimedias(db: Session, genus, skip: int = 0, limit: int = 100, ):
         .limit(limit)\
         .all()
     batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(model_text.Multimeida.genus.ilike('%' + genus + '%'),
-                                                      model_text.Multimeida.owner_institution_code == 'INHS').all()
+                                                      model_text.Multimeida.owner_institution_code == dataset).all()
     return multimedia_results, batch_results
 
 

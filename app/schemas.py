@@ -58,7 +58,7 @@ class IQBase(BaseModel):
     specimen_curved: str
     uniform_background: bool
     on_focus: bool
-    quality: int
+    quality: Optional[int]
     accession_number_validity: bool
     data_capture_method: str
     license: str
