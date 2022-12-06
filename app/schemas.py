@@ -1,8 +1,8 @@
-from datetime import time
+from datetime import time, datetime
 from typing import List, Optional
 
 from pydantic import BaseModel
-
+from enum import Enum
 
 class ItemBase(BaseModel):
     title: str
@@ -37,7 +37,16 @@ class User(UserBase):
     class Config:
         orm_mode = True
 
-
+class DatasetName(str, Enum):
+    glindataset = "GLIN"
+    idigbioset = "iDigBio"
+    gbifDataset = "GBIF"
+    morphbank = "Morphbank"
+    bb = "bounding box"
+    seg = "segmentation"
+    lm = "landmark"
+class DatasetItem(BaseModel):
+    name: DatasetName = None
 ##IQ##
 class IQBase(BaseModel):
     # ark_id: str
@@ -64,8 +73,8 @@ class IQBase(BaseModel):
     license: str
     publisher: str
     owner_institution_code: str
-    create_date: str
-    metadata_date: str
+    create_date: datetime
+    metadata_date: datetime
 
 
 class IQ(IQBase):
@@ -108,6 +117,7 @@ class MultimediaBase(BaseModel):
     scientific_name: str
     genus: str
     family: str
+    dataset: str
 
 
 ##Batch

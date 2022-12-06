@@ -48,6 +48,7 @@ class Multimeida(Base):
     scientific_name = Column(String)
     genus = Column(String)
     family = Column(String)
+    dataset = Column(String)
 
     # children = relationship("Multimeida")
     children = relationship("Multimeida", backref=backref("parent", remote_side=[ark_id]))
@@ -119,8 +120,8 @@ class ImageQualityMetadatum(Base):
     license = Column(String)
     publisher = Column(String)
     owner_institution_code = Column(String)
-    create_date = Column(String(10))
-    metadata_date = Column(String(10))
+    create_date = Column(Time(True))
+    metadata_date = Column(Time(True))
 
     ark_IQ = relationship('Multimeida', back_populates="quality_metadata")
     creator = relationship('Person')

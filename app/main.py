@@ -110,21 +110,25 @@ def get_db():
 #     items = crud.get_items(db, skip=skip, limit=limit)
 #     return items
 
+
+
 @router.get("/multimedias/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
-async def read_multimedias(response: Response, genus: str = 'Notropis', dataset: str = 'INHS', min_height:int = 1000, max_height:int = 1500, skip: int = 0, limit: int = 200, zipfile: bool = False,
+# async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
+async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, zipfile: bool = True,
                            db: Session = Depends(get_db)
                            ):
     '''
         get multimedias and associated (meta)data, like IQ, extended metadata, hirecachy medias
         - param genus: species genus
-        - param skip: start index
-        - param limit: specify the number of records to return
+        - param dataset: dataset name
         - param zipfile: return JSON or Zip file
         - return: multimedia lists(with associated (meta)data)
     '''
-    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height,skip=skip, limit=limit)
+    # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
+    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset)
     if zipfile:
-        path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height, "skip": skip, "limit": limit})
+        # path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height,"limit": limit})
+        path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset})
         response.headers['X-filename'] = filename
         return FileResponse(path=path, filename=filename)
     return multimedia_res

@@ -63,22 +63,29 @@ def get_iqs(db: Session, skip: int = 0, limit: int = 100):
     )
 
 
-def get_multimedias(db: Session, genus, dataset, max_height: int = 6500, min_height: int = 0, skip: int = 0, limit: int = 200, ):
+# def get_multimedias(db: Session, genus, dataset, max_height, min_height, limit: int = 200 ):
+def get_multimedias(db: Session, genus, dataset ):
+    if genus is None:
+        genus = ''
     multimedia_results = db.query(model_text.Multimeida).\
         join(model_text.ExtendedImageMetadatum).\
         filter(
-        model_text.Multimeida.genus.ilike('%' + genus + '%'),
-        model_text.Multimeida.owner_institution_code == dataset,
-        model_text.ExtendedImageMetadatum.height >= min_height,
-        model_text.ExtendedImageMetadatum.height <= max_height
+        or_(genus == '', model_text.Multimeida.genus.ilike('%' + genus + '%')),
+        or_(model_text.Multimeida.dataset == dataset, dataset == None),
+        # model_text.Multimeida.owner_institution_code == 'INHS',
+        # model_text.Multimeida.owner_institution_code == 'FMNH',
+        # model_text.Multimeida.owner_institution_code == 'OSUM',
+        # model_text.Multimeida.owner_institution_code == 'UMMZ',
+        # or_(min_height is None, model_text.ExtendedImageMetadatum.height >= min_height ),
+        # or_( max_height is None, model_text.ExtendedImageMetadatum.height <= max_height)
         # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
     ).options(joinedload(model_text.Multimeida.extended_metadata),
              joinedload(model_text.Multimeida.quality_metadata),
-             joinedload(model_text.Multimeida.batch)).offset(skip)\
-        .limit(limit)\
+             joinedload(model_text.Multimeida.batch))\
         .all()
-    batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(model_text.Multimeida.genus.ilike('%' + genus + '%'),
-                                                      model_text.Multimeida.owner_institution_code == dataset).all()
+    batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(
+        model_text.Multimeida.genus.ilike('%' + genus + '%'),
+        or_(model_text.Multimeida.dataset == dataset, dataset == None)).all()
     return multimedia_results, batch_results
 
 

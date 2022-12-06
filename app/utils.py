@@ -27,14 +27,15 @@ def zipfile_generator(results, batch_results, params):
         basicFilesSourcePath = os.path.join(config.ZIPFILES_PATH, file).replace("\\", "/");
         basicFilesTargetPath = os.path.join('Tulane/Fish/', file).replace("\\", "/")
         zf.write(basicFilesSourcePath, basicFilesTargetPath, zipstream.ZIP_DEFLATED)
-    multimedia_csv = csv_generator(results, type="multimedia")
-    extended_metadata_image_csv = csv_generator(results, type="extended")
-    quality_metadata_image_csv = csv_generator(results, type="quality")
+    multimedia_csv, multimedia_count = csv_generator(results, type="multimedia")
+    extended_metadata_image_csv, extend_data_count = csv_generator(results, type="extended")
+    quality_metadata_image_csv, quality_data_count = csv_generator(results, type="quality")
     batch_csv, citation_info = batch_citation_generator(batch_results)
     metadata_xml = metadata_generator(dataset_ark_id[2],params, current_date )
     zf.write_iter(os.path.join("Tulane/Fish/", "multimedia.csv"), iterable(multimedia_csv))
     zf.write_iter(os.path.join("Tulane/Fish/", "extendedImageMetadata.csv"), iterable(extended_metadata_image_csv))
-    zf.write_iter(os.path.join("Tulane/Fish/", "imageQualityMetadata.csv"), iterable(quality_metadata_image_csv))
+    if quality_data_count > 0:
+        zf.write_iter(os.path.join("Tulane/Fish/", "imageQualityMetadata.csv"), iterable(quality_metadata_image_csv))
     zf.write_iter(os.path.join("Tulane/Fish/", "batch.csv"), iterable(batch_csv))
 
     zf.write_iter(os.path.join("Tulane/Fish/", "citations.txt"), iterable(citation_info))
@@ -49,6 +50,7 @@ def zipfile_generator(results, batch_results, params):
 
 
 def csv_generator(results, type):
+    data_count = 0
     if type == 'multimedia':
         csv_header = "arkID,parentArkId,accessURI,createDate,modifyDate,fileNameAsDelivered,format,scientificName,genus,family,batchName,license,source,ownerInstitutionCode\n"
         csv_body = ""
@@ -59,7 +61,8 @@ def csv_generator(results, type):
                        str(record.scientific_name)+',' + str(record.genus) + ',' + str(record.family) + ',' + str(record.batch_id) + ',' + str(record.license) + ',' + str(
                 record.source) + ',' + str(record.owner_institution_code) + '\n'
             csv_body += recstring
-        return csv_header + csv_body
+            data_count = data_count + 1
+        return csv_header + csv_body, data_count
     if type == 'extended':
         csv_header = "arkId,fileNameAsDelivered,format,createDate,metadataDate,size,width,height,license,publisher,ownerInstitutionCode\n"
         csv_body = ""
@@ -72,7 +75,8 @@ def csv_generator(results, type):
                 record.extended_metadata[0].publisher) + ',' + str(
                 record.extended_metadata[0].owner_institution_code) + '\n'
             csv_body += recstring
-        return csv_header + csv_body
+            data_count = data_count + 1
+        return csv_header + csv_body, data_count
     if type == 'quality':
         csv_header = "arkID,license,publisher,ownerInstitutionCode,createDate,metadataDate,specimenQuantity," \
                      "containsScaleBar,containsLabel,accessionNumberValidity,containsBarcode,containsColorBar," \
@@ -81,35 +85,37 @@ def csv_generator(results, type):
                      "resourceCreationTechnique\n "
         csv_body = ""
         for record in results:
-            recstring = str(record.quality_metadata[0].ark_id) \
-                        + ',' + str(record.quality_metadata[0].license) \
-                        + ',' + str(record.quality_metadata[0].publisher) \
-                        + ',' + str(record.quality_metadata[0].owner_institution_code) \
-                        + ',' + str(record.quality_metadata[0].create_date) \
-                        + ',' + str(record.quality_metadata[0].metadata_date) \
-                        + ',' + str(record.quality_metadata[0].specimen_quantity) \
-                        + ',' + str(record.quality_metadata[0].contains_scalebar) \
-                        + ',' + str(record.quality_metadata[0].contains_label) \
-                        + ',' + str(record.quality_metadata[0].accession_number_validity) \
-                        + ',' + str(record.quality_metadata[0].contains_barcode) \
-                        + ',' + str(record.quality_metadata[0].contains_colorbar) \
-                        + ',' + str(record.quality_metadata[0].non_specimen_objects) \
-                        + ',' + str(record.quality_metadata[0].parts_overlapping) \
-                        + ',' + str(record.quality_metadata[0].specimen_angle) \
-                        + ',' + str(record.quality_metadata[0].specimen_view) \
-                        + ',' + str(record.quality_metadata[0].specimen_curved) \
-                        + ',' + str(record.quality_metadata[0].parts_missing) \
-                        + ',' + str(record.quality_metadata[0].all_parts_visible) \
-                        + ',' + str(record.quality_metadata[0].parts_folded) \
-                        + ',' + str(record.quality_metadata[0].brightness) \
-                        + ',' + str(record.quality_metadata[0].uniform_background) \
-                        + ',' + str(record.quality_metadata[0].on_focus) \
-                        + ',' + str(record.quality_metadata[0].color_issue) \
-                        + ',' + str(record.quality_metadata[0].quality) \
-                        + ',' + str(record.quality_metadata[0].data_capture_method) \
-                        + '\n'
-            csv_body += recstring
-        return csv_header + csv_body
+            if len(record.quality_metadata) > 0:
+                recstring = str(record.quality_metadata[0].ark_id) \
+                            + ',' + str(record.quality_metadata[0].license) \
+                            + ',' + str(record.quality_metadata[0].publisher) \
+                            + ',' + str(record.quality_metadata[0].owner_institution_code) \
+                            + ',' + str(record.quality_metadata[0].create_date) \
+                            + ',' + str(record.quality_metadata[0].metadata_date) \
+                            + ',' + str(record.quality_metadata[0].specimen_quantity) \
+                            + ',' + str(record.quality_metadata[0].contains_scalebar) \
+                            + ',' + str(record.quality_metadata[0].contains_label) \
+                            + ',' + str(record.quality_metadata[0].accession_number_validity) \
+                            + ',' + str(record.quality_metadata[0].contains_barcode) \
+                            + ',' + str(record.quality_metadata[0].contains_colorbar) \
+                            + ',' + str(record.quality_metadata[0].non_specimen_objects) \
+                            + ',' + str(record.quality_metadata[0].parts_overlapping) \
+                            + ',' + str(record.quality_metadata[0].specimen_angle) \
+                            + ',' + str(record.quality_metadata[0].specimen_view) \
+                            + ',' + str(record.quality_metadata[0].specimen_curved) \
+                            + ',' + str(record.quality_metadata[0].parts_missing) \
+                            + ',' + str(record.quality_metadata[0].all_parts_visible) \
+                            + ',' + str(record.quality_metadata[0].parts_folded) \
+                            + ',' + str(record.quality_metadata[0].brightness) \
+                            + ',' + str(record.quality_metadata[0].uniform_background) \
+                            + ',' + str(record.quality_metadata[0].on_focus) \
+                            + ',' + str(record.quality_metadata[0].color_issue) \
+                            + ',' + str(record.quality_metadata[0].quality) \
+                            + ',' + str(record.quality_metadata[0].data_capture_method) \
+                            + '\n'
+                csv_body += recstring
+                data_count = data_count + 1
+        return csv_header + csv_body, data_count
 
 def batch_citation_generator(results):
     # citations
