@@ -98,7 +98,7 @@ def csv_generator(results, type):
                             + ',' + str(record.quality_metadata[0].accession_number_validity) \
                             + ',' + str(record.quality_metadata[0].contains_barcode) \
                             + ',' + str(record.quality_metadata[0].contains_colorbar) \
-                            + ',' + str(record.quality_metadata[0].non_specimen_objects) \
+                            + ',\"' + str(record.quality_metadata[0].non_specimen_objects) + '\"' \
                             + ',' + str(record.quality_metadata[0].parts_overlapping) \
                             + ',' + str(record.quality_metadata[0].specimen_angle) \
                             + ',' + str(record.quality_metadata[0].specimen_view) \
@@ -109,7 +109,7 @@ def csv_generator(results, type):
                             + ',' + str(record.quality_metadata[0].brightness) \
                             + ',' + str(record.quality_metadata[0].uniform_background) \
                             + ',' + str(record.quality_metadata[0].on_focus) \
-                            + ',' + str(record.quality_metadata[0].color_issue) \
+                            + ',\"' + str(record.quality_metadata[0].color_issue) + "\"" \
                             + ',' + str(record.quality_metadata[0].quality) \
                             + ',' + str(record.quality_metadata[0].data_capture_method) \
                             + '\n'

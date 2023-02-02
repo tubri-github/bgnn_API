@@ -4,7 +4,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 
-from . import models, schemas, model_text
+from . import model_text
 
 
 # def get_user(db: Session, user_id: int):
@@ -64,27 +64,98 @@ def get_iqs(db: Session, skip: int = 0, limit: int = 100):
 
 
 # def get_multimedias(db: Session, genus, dataset, max_height, min_height, limit: int = 200 ):
-def get_multimedias(db: Session, genus, dataset ):
+def get_multimedias(db: Session, genus, family, dataset, zipfile):
     if genus is None:
         genus = ''
-    multimedia_results = db.query(model_text.Multimeida).\
-        join(model_text.ExtendedImageMetadatum).\
-        filter(
-        or_(genus == '', model_text.Multimeida.genus.ilike('%' + genus + '%')),
-        or_(model_text.Multimeida.dataset == dataset, dataset == None),
-        # model_text.Multimeida.owner_institution_code == 'INHS',
-        # model_text.Multimeida.owner_institution_code == 'FMNH',
-        # model_text.Multimeida.owner_institution_code == 'OSUM',
-        # model_text.Multimeida.owner_institution_code == 'UMMZ',
-        # or_(min_height is None, model_text.ExtendedImageMetadatum.height >= min_height ),
-        # or_( max_height is None, model_text.ExtendedImageMetadatum.height <= max_height)
-        # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
-    ).options(joinedload(model_text.Multimeida.extended_metadata),
-             joinedload(model_text.Multimeida.quality_metadata),
-             joinedload(model_text.Multimeida.batch))\
-        .all()
+    if family is None:
+        family = ''
+    if zipfile is False:
+         multimedia_results = db.query(model_text.Multimeida). \
+            join(model_text.ExtendedImageMetadatum). \
+            filter(
+            or_(genus == '', model_text.Multimeida.genus.ilike('%' + genus + '%')),
+            or_(family == '', model_text.Multimeida.family.ilike('%' + family + '%')),
+            or_(model_text.Multimeida.dataset == dataset, dataset == None),
+            # model_text.Multimeida.owner_institution_code == 'INHS',
+            # model_text.Multimeida.owner_institution_code == 'FMNH',
+            # model_text.Multimeida.owner_institution_code == 'OSUM',
+            # model_text.Multimeida.owner_institution_code == 'UMMZ',
+            # or_(min_height is None, model_text.ExtendedImageMetadatum.height >= min_height ),
+            # or_( max_height is None, model_text.ExtendedImageMetadatum.height <= max_height)
+            # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
+        ).options(joinedload(model_text.Multimeida.extended_metadata),
+                  joinedload(model_text.Multimeida.quality_metadata),
+                  joinedload(model_text.Multimeida.batch)) \
+            .limit(20).all()
+    else:
+        multimedia_results = db.query(model_text.Multimeida).\
+            join(model_text.ExtendedImageMetadatum).\
+            filter(
+            or_(genus == '', model_text.Multimeida.genus.ilike('%' + genus + '%')),
+            or_(family == '', model_text.Multimeida.family.ilike('%' + family + '%')),
+            or_(model_text.Multimeida.dataset == dataset, dataset == None),
+            # model_text.Multimeida.owner_institution_code == 'INHS',
+            # model_text.Multimeida.owner_institution_code == 'FMNH',
+            # model_text.Multimeida.owner_institution_code == 'OSUM',
+            # model_text.Multimeida.owner_institution_code == 'UMMZ',
+            # or_(min_height is None, model_text.ExtendedImageMetadatum.height >= min_height ),
+            # or_( max_height is None, model_text.ExtendedImageMetadatum.height <= max_height)
+            # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
+        ).options(joinedload(model_text.Multimeida.extended_metadata),
+                 joinedload(model_text.Multimeida.quality_metadata),
+                 joinedload(model_text.Multimeida.batch))\
+            .all()
     batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(
         model_text.Multimeida.genus.ilike('%' + genus + '%'),
+        model_text.Multimeida.family.ilike('%' + family + '%'),
+        or_(model_text.Multimeida.dataset == dataset, dataset == None)).all()
+    return multimedia_results, batch_results
+
+# for public
+def get_multimedia_public(db: Session, genus, family, dataset, zipfile, limit: int = 200):
+    if genus is None:
+        genus = ''
+    if family is None:
+        family = ''
+    if zipfile is False:
+         multimedia_results = db.query(model_text.Multimeida). \
+            join(model_text.ExtendedImageMetadatum). \
+            filter(
+            or_(genus == '', model_text.Multimeida.genus.ilike('%' + genus + '%')),
+            or_(family == '', model_text.Multimeida.family.ilike('%' + family + '%')),
+            or_(model_text.Multimeida.dataset == dataset, dataset == None),
+            # model_text.Multimeida.owner_institution_code == 'INHS',
+            # model_text.Multimeida.owner_institution_code == 'FMNH',
+            # model_text.Multimeida.owner_institution_code == 'OSUM',
+            # model_text.Multimeida.owner_institution_code == 'UMMZ',
+            # or_(min_height is None, model_text.ExtendedImageMetadatum.height >= min_height ),
+            # or_( max_height is None, model_text.ExtendedImageMetadatum.height <= max_height)
+            # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
+        ).options(joinedload(model_text.Multimeida.extended_metadata),
+                  joinedload(model_text.Multimeida.quality_metadata),
+                  joinedload(model_text.Multimeida.batch)) \
+            .limit(20).all()
+    else:
+        multimedia_results = db.query(model_text.Multimeida).\
+            join(model_text.ExtendedImageMetadatum).\
+            filter(
+            or_(genus == '', model_text.Multimeida.genus.ilike('%' + genus + '%')),
+            or_(family == '', model_text.Multimeida.family.ilike('%' + family + '%')),
+            or_(model_text.Multimeida.dataset == dataset, dataset == None),
+            # model_text.Multimeida.owner_institution_code == 'INHS',
+            # model_text.Multimeida.owner_institution_code == 'FMNH',
+            # model_text.Multimeida.owner_institution_code == 'OSUM',
+            # model_text.Multimeida.owner_institution_code == 'UMMZ',
+            # or_(min_height is None, model_text.ExtendedImageMetadatum.height >= min_height ),
+            # or_( max_height is None, model_text.ExtendedImageMetadatum.height <= max_height)
+            # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
+        ).options(joinedload(model_text.Multimeida.extended_metadata),
+                 joinedload(model_text.Multimeida.quality_metadata),
+                 joinedload(model_text.Multimeida.batch))\
+            .limit(limit).all()
+    batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(
+        model_text.Multimeida.genus.ilike('%' + genus + '%'),
+        model_text.Multimeida.family.ilike('%' + family + '%'),
         or_(model_text.Multimeida.dataset == dataset, dataset == None)).all()
     return multimedia_results, batch_results
 

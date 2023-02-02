@@ -1,15 +1,23 @@
-import json
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, APIRouter, Response
+from fastapi import Depends, FastAPI, HTTPException, APIRouter, Response, Security
+from fastapi.security.api_key import APIKeyHeader
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from app.utils import zipfile_generator
+from starlette.status import  HTTP_401_UNAUTHORIZED
 
+from app.utils import zipfile_generator
 from . import crud, models, schemas
 from .database import SessionLocal, engine
+
+# API key setting
+API_KEY = ["Tu!TeMP1Key"]
+
+api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
+
+
 
 models.Base.metadata.create_all(bind=engine)
 router = APIRouter()
@@ -30,6 +38,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"])
 
+async def get_api_key(
+    api_key_header: str = Security(api_key_header),
+):
+
+    if api_key_header in API_KEY:
+        return api_key_header
+    else:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED, detail="Invalid Token"
+        )
 
 # custom OpenAPI
 def custom_openapi():
@@ -38,7 +56,7 @@ def custom_openapi():
     openapi_schema = get_openapi(
         title="BGNN API",
         version="alpha 1.0.0",
-        description="<p>BGNN API Documentation for developers.</p><img width='500px' src='https://bgnn.tulane.edu/workflow.png' />",
+        description=" <h2>Getting Started</h2><p>This document introduced how to successfully call the Tulane Fish Image and Metadata repository API to get multimedia metadata and associated metadata, like Image Quality metadata. It assumes you are familiar with BGNN API and know how to perform API calls.</p><p>The API key is a unique identifier that authenticates requests of calling the API. Without a valid 'x-api-key' in request header, your request will not be processed. Please contact Xiaojun Wang at <a href='xwang48@tulane.edu'>xwang48@tulane.edu</a> for a API key. Please don't share your api key with others.</p>",
         routes=app.routes,
     )
     app.openapi_schema = openapi_schema
@@ -114,21 +132,46 @@ def get_db():
 
 @router.get("/multimedias/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
 # async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
-async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, zipfile: bool = True,
+async def read_multimedias(response: Response, api_key: str = Security(get_api_key), genus: Optional[str] = None, family: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, zipfile: bool = True,
                            db: Session = Depends(get_db)
                            ):
     '''
+        PRIVATE METHOD
         get multimedias and associated (meta)data, like IQ, extended metadata, hirecachy medias
         - param genus: species genus
+        - param family: species family
         - param dataset: dataset name
         - param zipfile: return JSON or Zip file
         - return: multimedia lists(with associated (meta)data)
     '''
     # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
-    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset)
+    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus,family=family, dataset=dataset, zipfile=zipfile)
     if zipfile:
         # path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height,"limit": limit})
-        path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset})
+        path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "family": family,"dataset": dataset})
+        response.headers['X-filename'] = filename
+        return FileResponse(path=path, filename=filename)
+    return multimedia_res
+
+@router.get("/multimedia_public/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
+# async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
+async def read_multimedias(response: Response, genus: Optional[str] = None, family: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, zipfile: bool = True,
+                           db: Session = Depends(get_db)
+                           ):
+    '''
+        PUBLIC METHOD
+        get multimedias and associated (meta)data, like IQ, extended metadata, hirecachy medias
+        - param genus: species genus
+        - param family: species family
+        - param dataset: dataset name
+        - param zipfile: return JSON or Zip file
+        - return: multimedia lists(with associated (meta)data)
+    '''
+    # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
+    multimedia_res, batch_res = crud.get_multimedia_public(db, genus=genus, family=family, dataset=dataset, limit=200, zipfile=zipfile)
+    if zipfile:
+        # path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height,"limit": limit})
+        path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "family": family,"dataset": dataset})
         response.headers['X-filename'] = filename
         return FileResponse(path=path, filename=filename)
     return multimedia_res
@@ -137,6 +180,7 @@ async def read_multimedias(response: Response, genus: Optional[str] = None, data
 @router.get("/multimedia/{ark_id}", tags=["Multimedia"], response_model=schemas.MultimediaChild)
 async def read_multimedia(ark_id: str = 'qs243w0c', db: Session = Depends(get_db)):
     '''
+        PUBLIC METHOD
          get multimedia and associated (meta)data, like IQ, extended metadata, hirecachy medias by ARK ID
     - param arkid: ark id (exp: qs243w0c)
     - return: multimedia entity
@@ -148,8 +192,9 @@ async def read_multimedia(ark_id: str = 'qs243w0c', db: Session = Depends(get_db
 
 
 @router.get("/iq/", tags=["Image Quality Metadata"], response_model=List[schemas.IQ])
-async def read_iqs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def read_iqs(api_key: str = Security(get_api_key), skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     '''
+        PRIVATE METHOD
         get image quality metadatas
         - param skip: start index
         - param limit: specify the number of records to return
