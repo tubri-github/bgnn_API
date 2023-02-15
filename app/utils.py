@@ -19,30 +19,41 @@ def random_str(num=6):
 
 
 def zipfile_generator(results, batch_results, params):
-    dataset_ark_id = minter(config.ARK_DATASETS)
+    dataset_ark_id_results = minter(config.ARK_DATASETS)
+    dataset_ark_id = dataset_ark_id_results[2]
     current_date = datetime.now().strftime("%Y-%m-%d")
     zf = zipstream.ZipFile(compression=zipstream.ZIP_DEFLATED)
     file_list = ["meta.xml", "rdf.owl"]
     for file in file_list:
         basicFilesSourcePath = os.path.join(config.ZIPFILES_PATH, file).replace("\\", "/");
-        basicFilesTargetPath = os.path.join('Tulane/Fish/', file).replace("\\", "/")
+        basicFilesTargetPath = os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', file).replace("\\", "/")
         zf.write(basicFilesSourcePath, basicFilesTargetPath, zipstream.ZIP_DEFLATED)
+
+    #multimedia.csv
     multimedia_csv, multimedia_count = csv_generator(results, type="multimedia")
+
+    #extended md.csv
     extended_metadata_image_csv, extend_data_count = csv_generator(results, type="extended")
+
+    #IQ.csv
     quality_metadata_image_csv, quality_data_count = csv_generator(results, type="quality")
     batch_csv, citation_info = batch_citation_generator(batch_results)
-    metadata_xml = metadata_generator(dataset_ark_id[2],params, current_date )
-    zf.write_iter(os.path.join("Tulane/Fish/", "multimedia.csv"), iterable(multimedia_csv))
-    zf.write_iter(os.path.join("Tulane/Fish/", "extendedImageMetadata.csv"), iterable(extended_metadata_image_csv))
+    metadata_xml = metadata_generator(dataset_ark_id,params, current_date )
+    zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "multimedia.csv"), iterable(multimedia_csv))
+    zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "extendedImageMetadata.csv"), iterable(extended_metadata_image_csv))
     if quality_data_count > 0:
-        zf.write_iter(os.path.join("Tulane/Fish/", "imageQualityMetadata.csv"), iterable(quality_metadata_image_csv))
-    zf.write_iter(os.path.join("Tulane/Fish/", "batch.csv"), iterable(batch_csv))
+        zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "imageQualityMetadata.csv"), iterable(quality_metadata_image_csv))
 
-    zf.write_iter(os.path.join("Tulane/Fish/", "citations.txt"), iterable(citation_info))
+    #batch
+    zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "batch.csv"), iterable(batch_csv))
 
-    zf.write_iter(os.path.join("Tulane/Fish/", "metadata.xml"), iterable(metadata_xml))
+    #citations
+    zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "citations.txt"), iterable(citation_info))
 
-    zf.filename = "TU_FISH_" + dataset_ark_id[2] + ".zip"
+    #metadata.xml
+    zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "metadata.xml"), iterable(metadata_xml))
+
+    zf.filename = "Fish-AIR_" + dataset_ark_id + ".zip"
     with open(os.path.join(zf.filename), 'wb') as f:
         for data in zf:
             f.write(data)
