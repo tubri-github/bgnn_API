@@ -67,9 +67,9 @@ def csv_generator(results, type):
         csv_body = ""
         for record in results:
             recstring = str(record.ark_id) + ',' + str(record.parent_ark_id) + ',' + str(
-                record.path) + ',' + str(record.create_date) + ',' + str(record.modify_date) + ',' + str(
-                record.filename_as_delivered) + ',' + str(record.format) + ',' +\
-                       str(record.scientific_name)+',' + str(record.genus) + ',' + str(record.family) + ',' + str(record.batch_id) + ',' + str(record.license) + ',' + str(
+                record.path) + ',' + str(record.create_date) + ',' + str(record.modify_date) + ',\"' + str(
+                record.filename_as_delivered) + '\",' + str(record.format) + ',\"' +\
+                       str(record.scientific_name)+'\",' + str(record.genus) + ',' + str(record.family) + ',' + str(record.batch_id) + ',' + str(record.license) + ',' + str(
                 record.source) + ',' + str(record.owner_institution_code) + '\n'
             csv_body += recstring
             data_count = data_count + 1
@@ -78,7 +78,7 @@ def csv_generator(results, type):
         csv_header = "arkId,fileNameAsDelivered,format,createDate,metadataDate,size,width,height,license,publisher,ownerInstitutionCode\n"
         csv_body = ""
         for record in results:
-            recstring = str(record.extended_metadata[0].ark_id) + ',' + str(record.filename_as_delivered) + ',' + str(
+            recstring = str(record.extended_metadata[0].ark_id) + ',\"' + str(record.filename_as_delivered) + '\",' + str(
                 record.format) + ',' + str(record.extended_metadata[0].create_date) + ',' + str(
                 record.extended_metadata[0].metadata_date) + ',' + str(record.extended_metadata[0].size) + ',' + \
                         str(record.extended_metadata[0].width) + ',' + str(
