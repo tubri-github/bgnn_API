@@ -45,6 +45,10 @@ class DatasetName(str, Enum):
     bb = "bounding box"
     seg = "segmentation"
     lm = "landmark"
+class Pipeline(str, Enum):
+    bb = "bounding box"
+    seg = "segmentation"
+    lm = "landmark"
 class DatasetItem(BaseModel):
     name: DatasetName = None
 ##IQ##
@@ -122,20 +126,20 @@ class MultimediaBase(BaseModel):
 
 ##Batch
 class BatchBase(BaseModel):
-    batch_name: str
+    batch_name: Optional[str]
     institution_code: str
     pipeline: str
     # create_date: time
     # modify_date: time
-    creator_comment: str
-    contactor: str
-    lab_code: str
-    project_name: str
-    url: str
+    creator_comment: Optional[str]
+    contactor: Optional[str]
+    lab_code: Optional[str]
+    project_name: Optional[str]
+    url: Optional[str]
     identifier: str
-    dataset_name: str
-    bibliographic_citation: str
-    creator: str
+    dataset_name: Optional[str]
+    bibliographic_citation: Optional[str]
+    creator: Optional[str]
 
 
 class BatchMetadatum(BatchBase):

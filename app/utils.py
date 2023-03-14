@@ -7,6 +7,7 @@ from . import model_text
 from noid.pynoid import *
 from jinja2 import Template, FileSystemLoader, Environment
 from datetime import datetime
+from fastapi import File,UploadFile
 
 
 ## random + uuid generator
@@ -170,7 +171,8 @@ def metadata_generator(dataset_ark_id, params, current_date):
 def iterable(csv):
     yield str.encode(csv)
 
-
+# ark id generator
+# TU organization id : 89609
 def minter(ark_type):
     template = 'bat.eeddeedek'
     if ark_type == config.ARK_BATCH:
@@ -183,3 +185,20 @@ def minter(ark_type):
     ark_obj = ark_id.split("/")
 
     return ark_obj
+
+# validate uploadfile
+def uploadFileValidation(file: UploadFile):
+    content_type = file.content_type.split("/")
+    content_size = len(file.file.read())
+    validate_flag = False
+    validate_error_msg = 'Uploaded file is not a valid image: '
+    if content_type[0] != 'image':
+        validate_error_msg =validate_error_msg + 'Only JPEG/JPG/PNG/BMP/GIF files are allowed. '
+        validate_flag = True
+    if content_size > 20 * 1024 * 1024:
+        validate_error_msg = validate_error_msg + 'Image size should be within 20 MB '
+        validate_flag = True
+    if validate_flag:
+        return validate_error_msg
+    else:
+        return ''

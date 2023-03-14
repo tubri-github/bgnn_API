@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_401_UNAUTHORIZED
 from starlette.responses import StreamingResponse
 
-from app.utils import zipfile_generator
+from app.utils import zipfile_generator, uploadFileValidation
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 
@@ -68,7 +68,7 @@ def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
     openapi_schema = get_openapi(
-        title="BGNN API",
+        title="FISH-AIR API",
         version="alpha 1.1.0",
         description="<h2>Getting Started</h2><p>This document introduced how to successfully call the Tulane Fish "
                     "Image and Metadata repository API to get multimedia metadata and associated metadata, "
@@ -99,7 +99,7 @@ def custom_openapi():
             "description": "Quality Metadata for images",
             "externalDocs": {
                 "description": "Image Quality terms",
-                "url": "https://bgnn.tulane.edu/terms/multimeida",
+                "url": "https://bgnn.tulane.edu/terms/ImageQualityMetadata",
             },
         },
     ]
@@ -235,22 +235,127 @@ async def read_iqs(api_key: str = Security(get_api_key), skip: int = 0, limit: i
     return iqs
 
 
-# upload public
+@router.post("/batch/", tags=['Batch'], response_model=schemas.BatchMetadatum)
+async def create_batch(api_key: str = Security(get_api_key), institution: str = None, pipeline: schemas.Pipeline = None,
+                       creator: str = None, comment: Optional[str] = None, codeRepo: Optional[str] = None,
+                       url: Optional[str] = None,
+                       dataset: str = "fish", citation: Optional[str] = None,
+                       db: Session = Depends(get_db)):
+    '''
+        PRIVATE METHOD
+        create a new batch
+        - param institution: Institution Code
+        - param pipeline: Source File/Bounding-Box/Segmentation/Landmark
+        - param creator: creator name
+        - param comment: creator comment
+        - param codeRepo: code repository
+        - param url: dataset/citation/website url
+        - param dataset: fish(default)/bird/etc..
+        - param citation: citation info
+        - return: New Batch
+    '''
+    batch = crud.create_batch(db, institution=institution, pipeline=pipeline,
+                              creator=creator, comment=comment, codeRepo=codeRepo, url=url,
+                              dataset=dataset, citation=citation)
+    if batch is None or batch is str:
+        raise HTTPException(status_code=404, detail="New batch creation failed. Please try again")
+    return batch
 
-@router.post("/upload/", tags=["Upload"])
-async def upload_files(api_key: str = Security(get_api_key)):
+@router.get("/batch/{batch_ark_id}", tags=['Batch'], response_model=schemas.BatchMetadatum)
+async def create_batch(batch_ark_id:str, api_key: str = Security(get_api_key),
+                       db: Session = Depends(get_db)):
+    '''
+        PRIVATE METHOD
+        create a new batch
+        - param institution: Institution Code
+        - param pipeline: Source File/Bounding-Box/Segmentation/Landmark
+        - param creator: creator name
+        - param comment: creator comment
+        - param codeRepo: code repository
+        - param url: dataset/citation/website url
+        - param dataset: fish(default)/bird/etc..
+        - param citation: citation info
+        - return: New Batch
+    '''
+    batch =""
+    if batch is None or batch is str:
+        raise HTTPException(status_code=404, detail="New batch creation failed. Please try again")
+    return batch
+
+@router.get("/batch/", tags=['Batch'], response_model=schemas.BatchMetadatum)
+async def create_batch(batch_ark_id:str, api_key: str = Security(get_api_key),
+                       db: Session = Depends(get_db)):
+    '''
+        PRIVATE METHOD
+        return all batches by user(later)
+        - param institution: Institution Code
+        - param pipeline: Source File/Bounding-Box/Segmentation/Landmark
+        - param creator: creator name
+        - param comment: creator comment
+        - param codeRepo: code repository
+        - param url: dataset/citation/website url
+        - param dataset: fish(default)/bird/etc..
+        - param citation: citation info
+        - return: New Batch
+    '''
+    batch =""
+    if batch is None or batch is str:
+        raise HTTPException(status_code=404, detail="New batch creation failed. Please try again")
+    return batch
+
+
+# upload image & metadata together
+@router.post("/uploadImage/", tags=["Upload"])
+async def upload_files(batch_ark_id: str,
+                       file: UploadFile = File(..., description="file"),
+                       parent_ark_id: str = None,
+                       image_license: str = None,
+                       image_source: str = None,
+                       image_institution_code : str = None,
+                       scientific_name: str = None,
+                       genus: str = None,
+                       family :str = None,
+                       dataset: schemas.DatasetName = None,
+                       db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
         upload files streaming
-        - param skip: start index
-        - param limit: specify the number of records to return
+        - param: Image File (size < 20mb, image type：JPEG/JPG/PNG/BMP/GIF)
+        - param: batch_ark_id:
+        - param: parent_ark_id:
+        - param: image_license:
+        - param: image_source:
+        - param: image_institution_code:
+        - param: scientific_name:
+        - param: genus:
+        - param: family:
+        - param: dataset:
         - return: upload success/failure and associate message:?
     '''
-    # md5 check
+    image_validate_error = uploadFileValidation(file)
+    if image_validate_error != '':
+        raise HTTPException(status_code=400, detail=image_validate_error)
+    crud.create_multimedia(
+        db, file, batch_ark_id, parent_ark_id, image_license, image_source, image_institution_code,
+                                       scientific_name, genus, family, dataset)
+    return 1
 
-    # upload chunks
-    return '3'
-
+# reupload image again if image has some issue.
+@router.post("/reUploadImage/", tags=["Upload"])
+async def upload_files(ark_id:str,
+                       file: UploadFile = File(..., description="file"),
+                       db: Session = Depends(get_db)):
+    '''
+        PRIVATE METHOD
+        upload files streaming
+        - param: Image File (size < 20mb, image type：JPEG/JPG/PNG/BMP/GIF)
+        - param: ark_id:
+        - return: upload success/failure and associate message:?
+    '''
+    image_validate_error = uploadFileValidation(file)
+    if image_validate_error != '':
+        raise HTTPException(status_code=400, detail=image_validate_error)
+    return 'reupload success'
 
 def calculate_md5(file):
     file_hash = hashlib.md4()
