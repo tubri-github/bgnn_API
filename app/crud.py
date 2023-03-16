@@ -110,7 +110,8 @@ def create_multimedia(db: Session, file: UploadFile, batch_ark_id, prarent_ark_i
     if matched_batch is not None:
         new_multimedia.batch_id = matched_batch[0].batch_name
     new_multimedia.filename_as_delivered = file.filename
-    new_multimedia.format = file.filename.format()
+    new_multimedia.format = file.filename.split(".")[1]
+    new_multimedia.path = "https://bgnn.tulane.edu/hdr-share/ark/89609/" + multimedia_ark_id_obj[2] + "." + new_multimedia.format
 
     new_multimedia.license = image_license
     new_multimedia.source = image_source
@@ -121,12 +122,13 @@ def create_multimedia(db: Session, file: UploadFile, batch_ark_id, prarent_ark_i
     new_multimedia.family = family
     new_multimedia.dataset = dataset
 
-    new_mul_extendMetadata = model_text.ExtendedImageMetadatum(ark_id=new_multimedia.ark_id, ext_image_metadata_id=uuid.uuid4())
+    new_mul_extendMetadata = model_text.ExtendedImageMetadatum(ark_id=new_multimedia.ark_id, ext_image_metadata_id=str(uuid.uuid4()))
     new_mul_extendMetadata.license = 'CC BY-NC'
     new_mul_extendMetadata.publisher = 'Fish-Air'
     new_mul_extendMetadata.owner_institution_code = 'TUBRI'
     new_mul_extendMetadata.width = width
     new_mul_extendMetadata.height = height
+    new_mul_extendMetadata.size = len(file.file.read())
 
     try:
         db.add(new_multimedia)
@@ -135,58 +137,82 @@ def create_multimedia(db: Session, file: UploadFile, batch_ark_id, prarent_ark_i
         db.refresh(new_multimedia)
         db.refresh(new_mul_extendMetadata)
 
-        return new_multimedia,new_mul_extendMetadata
+        return new_multimedia
     except Exception as error:
         db.rollback()
         return str(error)
 
 
 # def get_multimedias(db: Session, genus, dataset, max_height, min_height, limit: int = 200 ):
-def get_multimedias(db: Session, genus, family, dataset, zipfile):
+def get_multimedias(db: Session, genus, family, dataset, institution, max_width, min_width,max_height, min_height, batch_ark_id,zipfile):
     if genus is None:
         genus = ''
     if family is None:
         family = ''
+    if institution is None:
+        institution= ''
+    if batch_ark_id is None:
+        batch_ark_id = ''
+    if min_height is None:
+        min_height = -1
+    if max_height is None:
+        max_height = -1
+    if min_width is None:
+        min_width = -1
+    if max_width is None:
+        max_width = -1
     if zipfile is False:
          multimedia_results = db.query(model_text.Multimeida). \
             join(model_text.ExtendedImageMetadatum). \
             filter(
             or_(genus == '', model_text.Multimeida.genus.ilike('%' + genus + '%')),
             or_(family == '', model_text.Multimeida.family.ilike('%' + family + '%')),
-            or_(model_text.Multimeida.dataset == dataset, dataset == None),
+            or_(model_text.Multimeida.dataset.in_(dataset), dataset == None),
+            or_(institution == '', model_text.Multimeida.owner_institution_code == institution),
+            or_(batch_ark_id == '', model_text.Multimeida.batch_ark_id == batch_ark_id),
             # model_text.Multimeida.owner_institution_code == 'INHS',
             # model_text.Multimeida.owner_institution_code == 'FMNH',
             # model_text.Multimeida.owner_institution_code == 'OSUM',
             # model_text.Multimeida.owner_institution_code == 'UMMZ',
-            # or_(min_height is None, model_text.ExtendedImageMetadatum.height >= min_height ),
-            # or_( max_height is None, model_text.ExtendedImageMetadatum.height <= max_height)
+            #or_(filesize is None, model_text.ExtendedImageMetadatum.height >= min_height ),
+            or_(min_height == -1, model_text.ExtendedImageMetadatum.height >= min_height ),
+            or_( max_height == -1, model_text.ExtendedImageMetadatum.height <= max_height),
+             or_(min_width == -1, model_text.ExtendedImageMetadatum.width >= min_width),
+             or_(max_width == -1, model_text.ExtendedImageMetadatum.width <= max_width)
             # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
         ).options(joinedload(model_text.Multimeida.extended_metadata),
                   joinedload(model_text.Multimeida.quality_metadata),
                   joinedload(model_text.Multimeida.batch)) \
-            .limit(20).all()
+            .limit(20).subquery()
     else:
         multimedia_results = db.query(model_text.Multimeida).\
             join(model_text.ExtendedImageMetadatum).\
             filter(
             or_(genus == '', model_text.Multimeida.genus.ilike('%' + genus + '%')),
             or_(family == '', model_text.Multimeida.family.ilike('%' + family + '%')),
-            or_(model_text.Multimeida.dataset == dataset, dataset == None),
+            or_(model_text.Multimeida.dataset.in_(dataset), dataset == None),
+            or_(institution == '', model_text.Multimeida.owner_institution_code == institution),
+            or_(batch_ark_id == '', model_text.Multimeida.batch_ark_id == batch_ark_id),
             # model_text.Multimeida.owner_institution_code == 'INHS',
             # model_text.Multimeida.owner_institution_code == 'FMNH',
             # model_text.Multimeida.owner_institution_code == 'OSUM',
             # model_text.Multimeida.owner_institution_code == 'UMMZ',
-            # or_(min_height is None, model_text.ExtendedImageMetadatum.height >= min_height ),
-            # or_( max_height is None, model_text.ExtendedImageMetadatum.height <= max_height)
+            # or_(filesize is None, model_text.ExtendedImageMetadatum.height >= min_height ),
+            or_(min_height == -1, model_text.ExtendedImageMetadatum.height >= min_height),
+            or_(max_height == -1, model_text.ExtendedImageMetadatum.height <= max_height),
+            or_(min_width == -1, model_text.ExtendedImageMetadatum.width >= min_width),
+            or_(max_width == -1, model_text.ExtendedImageMetadatum.width <= max_width)
             # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
         ).options(joinedload(model_text.Multimeida.extended_metadata),
-                 joinedload(model_text.Multimeida.quality_metadata),
-                 joinedload(model_text.Multimeida.batch))\
-            .all()
-    batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(
-        model_text.Multimeida.genus.ilike('%' + genus + '%'),
-        model_text.Multimeida.family.ilike('%' + family + '%'),
-        or_(model_text.Multimeida.dataset == dataset, dataset == None)).all()
+                  joinedload(model_text.Multimeida.quality_metadata),
+                  joinedload(model_text.Multimeida.batch)) \
+            .subquery()
+    # batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(
+    #     model_text.Multimeida.genus.ilike('%' + genus + '%'),
+    #     model_text.Multimeida.family.ilike('%' + family + '%'),
+    #     or_(model_text.Multimeida.dataset == dataset, dataset == None)).all()
+    batch_results = db.query(model_text.Batch).filter(model_text.Batch.ark_id == multimedia_results.c.batch_ark_id).all()
+    multimedia_results = db.query(model_text.Multimeida).select_entity_from(multimedia_results).all()
     return multimedia_results, batch_results
 
 # for public

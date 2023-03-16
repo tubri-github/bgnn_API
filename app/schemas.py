@@ -92,12 +92,12 @@ class IQ(IQBase):
 class ExtendedImageBase(BaseModel):
     create_date = time
     metadata_date = time
-    size: int
-    width: int
-    height: int
-    license: str
-    publisher: str
-    owner_institution_code: str
+    size: Optional[int]
+    width: Optional[int]
+    height: Optional[int]
+    license: Optional[str]
+    publisher: Optional[str]
+    owner_institution_code: Optional[str]
     resolution: Optional[str]
 
 
@@ -115,13 +115,13 @@ class MultimediaBase(BaseModel):
     format: str
     create_date = time
     modify_date = time
-    license: str
-    source: str
-    owner_institution_code: str
-    scientific_name: str
-    genus: str
-    family: str
-    dataset: str
+    license: Optional[str]
+    source: Optional[str]
+    owner_institution_code: Optional[str]
+    scientific_name: Optional[str]
+    genus: Optional[str]
+    family: Optional[str]
+    dataset: Optional[str]
 
 
 ##Batch
@@ -151,8 +151,8 @@ class BatchMetadatum(BatchBase):
 
 class Multimedia(MultimediaBase):
     ark_id: str
-    parent_ark_id: str
-    batch_id: str
+    parent_ark_id: Optional[str]
+    batch_id: Optional[str]
     children: List['Multimedia'] = []
 
     class Config:

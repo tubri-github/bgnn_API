@@ -1,9 +1,7 @@
 # coding: utf-8
 from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String, Time
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
-import uuid
 
 Base = declarative_base()
 metadata = Base.metadata
@@ -35,7 +33,7 @@ class Batch(Base):
 class Multimeida(Base):
     __tablename__ = 'multimeida'
 
-    ark_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ark_id = Column(String, primary_key=True)
     parent_ark_id = Column(String, ForeignKey("multimeida.ark_id"), nullable=True)
     batch_id = Column(String)
     batch_ark_id = Column(String, ForeignKey("batch.ark_id"), nullable=True)

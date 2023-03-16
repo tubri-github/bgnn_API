@@ -14,7 +14,7 @@ from urllib.parse import quote
 import aiofiles
 
 from fastapi import Depends, FastAPI, HTTPException, APIRouter, Response, Security, Request, Body, UploadFile, File, \
-    Path as F_Path
+    Path as F_Path, Query
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -157,7 +157,9 @@ def get_db():
 @router.get("/multimedias/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
 # async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
 async def read_multimedias(response: Response, api_key: str = Security(get_api_key), genus: Optional[str] = None,
-                           family: Optional[str] = None, dataset: schemas.DatasetName = None, zipfile: bool = True,
+                           family: Optional[str] = None, dataset: Optional[List[schemas.DatasetName]] = Query(None), institution: Optional[str] = None,
+                           max_width: Optional[int] = None, min_width: Optional[int] = None ,max_height: Optional[int] = None,
+                           min_height: Optional[int] = None, batch_ark_id: Optional[str] = None,zipfile: bool = True,
                            db: Session = Depends(get_db)
                            ):
     '''
@@ -170,7 +172,9 @@ async def read_multimedias(response: Response, api_key: str = Security(get_api_k
         - return: multimedia lists(with associated (meta)data). If zipfile is false, it will return 20 records (pagination required)
     '''
     # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
-    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, family=family, dataset=dataset, zipfile=zipfile)
+    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, family=family, dataset=dataset, zipfile=zipfile,institution=institution,
+                                                    max_width=max_width,max_height=max_height,min_width=min_width,min_height=min_height,
+                                                     batch_ark_id=batch_ark_id)
     if zipfile:
         # path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height,"limit": limit})
         path, filename = zipfile_generator(multimedia_res, batch_res,
@@ -180,12 +184,28 @@ async def read_multimedias(response: Response, api_key: str = Security(get_api_k
     return multimedia_res
 
 
+@router.put("/multimedias/", tags=["Multimedia"])
+# async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
+async def update_multimedias(response: Response, ark_id: str, api_key: str = Security(get_api_key),
+                             db: Session = Depends(get_db)
+                             ):
+    '''
+        PRIVATE METHOD
+        update multimedias and associated (meta)data, like IQ, extended metadata, hirecachy medias
+        - param ark_id: ark id
+        - return: updated multimedia
+    '''
+    # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
+
+    return "1"
+
+
 @router.get("/multimedia_public/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
 # async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
-async def read_multimedias(response: Response, genus: Optional[str] = None, family: Optional[str] = None,
-                           dataset: schemas.DatasetName = schemas.DatasetName.glindataset, zipfile: bool = True,
-                           db: Session = Depends(get_db)
-                           ):
+async def read_multimedias_public(response: Response, genus: Optional[str] = None, family: Optional[str] = None,
+                                  dataset: schemas.DatasetName = schemas.DatasetName.glindataset, zipfile: bool = True,
+                                  db: Session = Depends(get_db)
+                                  ):
     '''
         PUBLIC METHOD
         get multimedias and associated (meta)data, like IQ, extended metadata, hirecachy medias
@@ -208,7 +228,7 @@ async def read_multimedias(response: Response, genus: Optional[str] = None, fami
 
 
 @router.get("/multimedia/{ark_id}", tags=["Multimedia"], response_model=schemas.MultimediaChild)
-async def read_multimedia(ark_id: str = 'qs243w0c', db: Session = Depends(get_db)):
+async def read_multimedia_arkid(ark_id: str = 'qs243w0c', db: Session = Depends(get_db)):
     '''
         PUBLIC METHOD
          get multimedia and associated (meta)data, like IQ, extended metadata, hirecachy medias by ARK ID
@@ -261,12 +281,13 @@ async def create_batch(api_key: str = Security(get_api_key), institution: str = 
         raise HTTPException(status_code=404, detail="New batch creation failed. Please try again")
     return batch
 
+
 @router.get("/batch/{batch_ark_id}", tags=['Batch'], response_model=schemas.BatchMetadatum)
-async def create_batch(batch_ark_id:str, api_key: str = Security(get_api_key),
-                       db: Session = Depends(get_db)):
+async def get_batch(batch_ark_id: str, api_key: str = Security(get_api_key),
+                    db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
-        create a new batch
+        get batch by batch ark id
         - param institution: Institution Code
         - param pipeline: Source File/Bounding-Box/Segmentation/Landmark
         - param creator: creator name
@@ -275,16 +296,17 @@ async def create_batch(batch_ark_id:str, api_key: str = Security(get_api_key),
         - param url: dataset/citation/website url
         - param dataset: fish(default)/bird/etc..
         - param citation: citation info
-        - return: New Batch
+        - return: Batch lists
     '''
-    batch =""
+    batch = ""
     if batch is None or batch is str:
         raise HTTPException(status_code=404, detail="New batch creation failed. Please try again")
     return batch
 
+
 @router.get("/batch/", tags=['Batch'], response_model=schemas.BatchMetadatum)
-async def create_batch(batch_ark_id:str, api_key: str = Security(get_api_key),
-                       db: Session = Depends(get_db)):
+async def get_batchlist(batch_ark_id: str, api_key: str = Security(get_api_key),
+                        db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
         return all batches by user(later)
@@ -298,7 +320,7 @@ async def create_batch(batch_ark_id:str, api_key: str = Security(get_api_key),
         - param citation: citation info
         - return: New Batch
     '''
-    batch =""
+    batch = ""
     if batch is None or batch is str:
         raise HTTPException(status_code=404, detail="New batch creation failed. Please try again")
     return batch
@@ -306,15 +328,15 @@ async def create_batch(batch_ark_id:str, api_key: str = Security(get_api_key),
 
 # upload image & metadata together
 @router.post("/uploadImage/", tags=["Upload"])
-async def upload_files(batch_ark_id: str,
+async def upload_image(batch_ark_id: str,
                        file: UploadFile = File(..., description="file"),
                        parent_ark_id: str = None,
                        image_license: str = None,
                        image_source: str = None,
-                       image_institution_code : str = None,
+                       image_institution_code: str = None,
                        scientific_name: str = None,
                        genus: str = None,
-                       family :str = None,
+                       family: str = None,
                        dataset: schemas.DatasetName = None,
                        db: Session = Depends(get_db)):
     '''
@@ -335,16 +357,21 @@ async def upload_files(batch_ark_id: str,
     image_validate_error = uploadFileValidation(file)
     if image_validate_error != '':
         raise HTTPException(status_code=400, detail=image_validate_error)
-    crud.create_multimedia(
+    new_multimedia = crud.create_multimedia(
         db, file, batch_ark_id, parent_ark_id, image_license, image_source, image_institution_code,
-                                       scientific_name, genus, family, dataset)
-    return 1
+        scientific_name, genus, family, dataset)
+
+    return {
+        'status': 'success',
+        'ark_id': new_multimedia.ark_id
+    }
+
 
 # reupload image again if image has some issue.
 @router.post("/reUploadImage/", tags=["Upload"])
-async def upload_files(ark_id:str,
-                       file: UploadFile = File(..., description="file"),
-                       db: Session = Depends(get_db)):
+async def re_upload_image(ark_id: str,
+                          file: UploadFile = File(..., description="file"),
+                          db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
         upload files streaming
@@ -356,6 +383,7 @@ async def upload_files(ark_id:str,
     if image_validate_error != '':
         raise HTTPException(status_code=400, detail=image_validate_error)
     return 'reupload success'
+
 
 def calculate_md5(file):
     file_hash = hashlib.md4()
