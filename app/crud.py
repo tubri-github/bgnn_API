@@ -1,7 +1,7 @@
-import io
-import json
+import os
 import uuid
 
+import aiofiles
 from fastapi import UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 from app.utils import minter
 import app.config as config
 from PIL import Image
+from pathlib import Path
 
 from . import model_text
 
@@ -92,23 +93,37 @@ def create_batch(db:Session,institution, pipeline,
         return str(error)
 
 #new multimedia
-def create_multimedia(db: Session, file: UploadFile, batch_ark_id, prarent_ark_id, image_license, image_source, image_institution_code,
+async def create_multimedia(db: Session, file: UploadFile, batch_ark_id, prarent_ark_id, image_license, image_source, image_institution_code,
                       scientific_name,genus, family, dataset):
-    #get information from upload image
+    #check if batch arkid exists
+    matched_batch = db.query(model_text.Batch).filter(model_text.Batch.ark_id == batch_ark_id).all()
+    if len(matched_batch) == 0:
+        return "Sorry, there is no matched batch ARK ID."
+    try:
+        #get information from upload image
 
-    # 打开图像文件
-    image_content = file.file
-    image = Image.open(image_content)
-    # 获取图像宽度和高度
-    width, height = image.size
-    #insert media
-    multimedia_ark_id_obj = minter(config.ARK_MULTIMEDIA)
+        # open image from UploadFile
+        image_content = file.file
+        image = Image.open(image_content)
+        # get image width and height
+        width, height = image.size
+
+        #insert media
+        multimedia_ark_id_obj = minter(config.ARK_MULTIMEDIA)
+
+        path = Path("/www/hdr/hdr-share/ftp/ark/89609/"+ batch_ark_id)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        file_name = Path(path, multimedia_ark_id_obj[2] + '.' + file.filename.split(".")[1])
+        if not os.path.exists(file_name):
+            async with aiofiles.open(file_name, 'wb') as f:
+                await f.write(file.file.read())
+    except Exception as error:
+        return str(error)
     new_multimedia = model_text.Multimeida(ark_id=multimedia_ark_id_obj[2],parent_ark_id=prarent_ark_id)
     new_multimedia.parent_ark_id = prarent_ark_id
     new_multimedia.batch_ark_id = batch_ark_id
-    matched_batch = db.query(model_text.Batch).filter(model_text.Batch.ark_id == batch_ark_id).all()
-    if matched_batch is not None:
-        new_multimedia.batch_id = matched_batch[0].batch_name
+    new_multimedia.batch_id = matched_batch[0].batch_name
     new_multimedia.filename_as_delivered = file.filename
     new_multimedia.format = file.filename.split(".")[1]
     new_multimedia.path = "https://bgnn.tulane.edu/hdr-share/ark/89609/" + multimedia_ark_id_obj[2] + "." + new_multimedia.format
@@ -144,7 +159,7 @@ def create_multimedia(db: Session, file: UploadFile, batch_ark_id, prarent_ark_i
 
 
 # def get_multimedias(db: Session, genus, dataset, max_height, min_height, limit: int = 200 ):
-def get_multimedias(db: Session, genus, family, dataset, institution, max_width, min_width,max_height, min_height, batch_ark_id,zipfile):
+def get_multimedias(db: Session, genus, family, dataset, institution, max_width, min_width,max_height, min_height, batch_ark_id,zipfile,limit):
     if genus is None:
         genus = ''
     if family is None:
@@ -193,26 +208,19 @@ def get_multimedias(db: Session, genus, family, dataset, institution, max_width,
             or_(model_text.Multimeida.dataset.in_(dataset), dataset == None),
             or_(institution == '', model_text.Multimeida.owner_institution_code == institution),
             or_(batch_ark_id == '', model_text.Multimeida.batch_ark_id == batch_ark_id),
-            # model_text.Multimeida.owner_institution_code == 'INHS',
-            # model_text.Multimeida.owner_institution_code == 'FMNH',
-            # model_text.Multimeida.owner_institution_code == 'OSUM',
-            # model_text.Multimeida.owner_institution_code == 'UMMZ',
-            # or_(filesize is None, model_text.ExtendedImageMetadatum.height >= min_height ),
             or_(min_height == -1, model_text.ExtendedImageMetadatum.height >= min_height),
             or_(max_height == -1, model_text.ExtendedImageMetadatum.height <= max_height),
             or_(min_width == -1, model_text.ExtendedImageMetadatum.width >= min_width),
             or_(max_width == -1, model_text.ExtendedImageMetadatum.width <= max_width)
-            # or_(model_text.Multimeida.owner_institution_code == 'INHS', institution== None),
         ).options(joinedload(model_text.Multimeida.extended_metadata),
                   joinedload(model_text.Multimeida.quality_metadata),
                   joinedload(model_text.Multimeida.batch)) \
             .subquery()
-    # batch_results = db.query(model_text.Batch).join(model_text.Multimeida).filter(
-    #     model_text.Multimeida.genus.ilike('%' + genus + '%'),
-    #     model_text.Multimeida.family.ilike('%' + family + '%'),
-    #     or_(model_text.Multimeida.dataset == dataset, dataset == None)).all()
     batch_results = db.query(model_text.Batch).filter(model_text.Batch.ark_id == multimedia_results.c.batch_ark_id).all()
-    multimedia_results = db.query(model_text.Multimeida).select_entity_from(multimedia_results).all()
+    if limit == -1:
+        multimedia_results = db.query(model_text.Multimeida).select_entity_from(multimedia_results).all()
+    else:
+        multimedia_results = db.query(model_text.Multimeida).select_entity_from(multimedia_results).limit(limit).all()
     return multimedia_results, batch_results
 
 # for public

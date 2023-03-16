@@ -94,7 +94,7 @@ def csv_generator(results, type):
                      "containsScaleBar,containsLabel,accessionNumberValidity,containsBarcode,containsColorBar," \
                      "nonSpecimenObjects,partsOverlapping,specimenAngle,specimenView,specimenCurved,partsMissing," \
                      "allPartsVisible,partsFolded,brightness,uniformBackground,onFocus,colorIssue,quality," \
-                     "resourceCreationTechnique\n "
+                     "resourceCreationTechnique\n"
         csv_body = ""
         for record in results:
             if len(record.quality_metadata) > 0:

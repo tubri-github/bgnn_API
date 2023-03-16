@@ -167,14 +167,20 @@ async def read_multimedias(response: Response, api_key: str = Security(get_api_k
         get multimedias and associated (meta)data, like IQ, extended metadata, hirecachy medias
         - param genus: species genus
         - param family: species family
-        - param dataset: dataset name
+        - param institution: institution code
+        - param dataset: dataset name(multiple selection)
+        - param max_width: max width of image
+        - param min_width: min width of image
+        - param max_height: max height of image
+        - param min_height: min height of image
+        - param batch_ark_id: batch ARK ID
         - param zipfile: return JSON or Zip file
-        - return: multimedia lists(with associated (meta)data). If zipfile is false, it will return 20 records (pagination required)
+        - return: multimedia lists(with associated (meta)data). If zipfile is false, it will return 20 records(pagination will be added later)
     '''
     # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
     multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, family=family, dataset=dataset, zipfile=zipfile,institution=institution,
                                                     max_width=max_width,max_height=max_height,min_width=min_width,min_height=min_height,
-                                                     batch_ark_id=batch_ark_id)
+                                                     batch_ark_id=batch_ark_id,limit=-1)
     if zipfile:
         # path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height,"limit": limit})
         path, filename = zipfile_generator(multimedia_res, batch_res,
@@ -183,6 +189,40 @@ async def read_multimedias(response: Response, api_key: str = Security(get_api_k
         return FileResponse(path=path, filename=filename)
     return multimedia_res
 
+@router.get("/multimedias_demo/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
+# async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
+async def read_multimedias(response: Response, genus: Optional[str] = None,
+                           family: Optional[str] = None, dataset: Optional[List[schemas.DatasetName]] = Query(None), institution: Optional[str] = None,
+                           max_width: Optional[int] = None, min_width: Optional[int] = None ,max_height: Optional[int] = None,
+                           min_height: Optional[int] = None, batch_ark_id: Optional[str] = None,zipfile: bool = True,
+                           db: Session = Depends(get_db)
+                           ):
+    '''
+        PUBLIC METHOD
+        A demo for getting multimedias and associated (meta)data, like IQ, extended metadata, hirecachy medias
+        - param genus: species genus
+        - param family: species family
+        - param institution: institution code
+        - param dataset: dataset name(multiple selection)
+        - param max_width: max width of image
+        - param min_width: min width of image
+        - param max_height: max height of image
+        - param min_height: min height of image
+        - param batch_ark_id: batch ARK ID
+        - param zipfile: return JSON or Zip file
+        - return: a list of 200 multimedias (with associated (meta)data). If zipfile is false, it will return 20 records
+    '''
+    # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
+    multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, family=family, dataset=dataset, zipfile=zipfile,institution=institution,
+                                                    max_width=max_width,max_height=max_height,min_width=min_width,min_height=min_height,
+                                                     batch_ark_id=batch_ark_id,limit=200)
+    if zipfile:
+        # path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height,"limit": limit})
+        path, filename = zipfile_generator(multimedia_res, batch_res,
+                                           params={"genus": genus, "family": family, "dataset": dataset})
+        response.headers['X-filename'] = filename
+        return FileResponse(path=path, filename=filename)
+    return multimedia_res
 
 @router.put("/multimedias/", tags=["Multimedia"])
 # async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
@@ -329,6 +369,7 @@ async def get_batchlist(batch_ark_id: str, api_key: str = Security(get_api_key),
 # upload image & metadata together
 @router.post("/uploadImage/", tags=["Upload"])
 async def upload_image(batch_ark_id: str,
+                       api_key: str = Security(get_api_key),
                        file: UploadFile = File(..., description="file"),
                        parent_ark_id: str = None,
                        image_license: str = None,
@@ -357,10 +398,11 @@ async def upload_image(batch_ark_id: str,
     image_validate_error = uploadFileValidation(file)
     if image_validate_error != '':
         raise HTTPException(status_code=400, detail=image_validate_error)
-    new_multimedia = crud.create_multimedia(
+    new_multimedia = await crud.create_multimedia(
         db, file, batch_ark_id, parent_ark_id, image_license, image_source, image_institution_code,
         scientific_name, genus, family, dataset)
-
+    if isinstance(new_multimedia,str):
+        raise HTTPException(status_code=400, detail=new_multimedia)
     return {
         'status': 'success',
         'ark_id': new_multimedia.ark_id
