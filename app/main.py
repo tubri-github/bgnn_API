@@ -408,10 +408,8 @@ async def upload_image(batch_ark_id: str = Form(...),
     image_validate_error = uploadFileValidation(file)
     if image_validate_error != '':
         raise HTTPException(status_code=400, detail=image_validate_error)
-    file.file.seek(0)
-    filesize = len(file.file.read())
     new_multimedia = await crud.create_multimedia(
-        db, file,filesize, batch_ark_id, parent_ark_id, image_license, image_source, image_institution_code,
+        db, file, batch_ark_id, parent_ark_id, image_license, image_source, image_institution_code,
         scientific_name, genus, family, dataset)
     if isinstance(new_multimedia,str):
         raise HTTPException(status_code=400, detail=new_multimedia)

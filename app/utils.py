@@ -191,6 +191,8 @@ def uploadFileValidation(file: UploadFile):
     # content_type = file.content_type.split("/")
     format = file.filename.split(".")[1]
     content_size = len(file.file.read())
+    # turn the file pointer from the end of the file to the start of the file
+    file.file.seek(0)
     validate_flag = False
     validate_error_msg = 'Uploaded file is not a valid image: '
     if format not in ['png','jpeg','jpg','bmp','gif']:

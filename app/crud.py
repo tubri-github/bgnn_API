@@ -106,7 +106,7 @@ async def create_batch(db:Session,institution, pipeline,
         return str(error)
 
 #new multimedia
-async def create_multimedia(db: Session, file: UploadFile,filesize, batch_ark_id, prarent_ark_id, image_license, image_source, image_institution_code,
+async def create_multimedia(db: Session, file: UploadFile, batch_ark_id, prarent_ark_id, image_license, image_source, image_institution_code,
                       scientific_name,genus, family, dataset):
     #check if batch arkid exists
     matched_batch = db.query(model_text.Batch).filter(model_text.Batch.ark_id == batch_ark_id).all()
@@ -120,6 +120,8 @@ async def create_multimedia(db: Session, file: UploadFile,filesize, batch_ark_id
         image = Image.open(image_content)
         # get image width and height
         width, height = image.size
+        # turn the file pointer from the end of the file to the start of the file
+        file.file.seek(0)
 
         #insert media
         multimedia_ark_id_obj = minter(config.ARK_MULTIMEDIA)
@@ -156,7 +158,9 @@ async def create_multimedia(db: Session, file: UploadFile,filesize, batch_ark_id
     new_mul_extendMetadata.owner_institution_code = 'TUBRI'
     new_mul_extendMetadata.width = width
     new_mul_extendMetadata.height = height
-    new_mul_extendMetadata.size = filesize
+    # turn the file pointer from the end of the file to the start of the file
+    file.file.seek(0)
+    new_mul_extendMetadata.size = len(file.file.read())
 
     try:
         db.add(new_multimedia)
