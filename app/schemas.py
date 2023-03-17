@@ -45,6 +45,10 @@ class DatasetName(str, Enum):
     bb = "bounding box"
     seg = "segmentation"
     lm = "landmark"
+    none=''
+
+
+
 class Pipeline(str, Enum):
     bb = "bounding box"
     seg = "segmentation"
@@ -90,8 +94,8 @@ class IQ(IQBase):
 
 ##Extended image metadata
 class ExtendedImageBase(BaseModel):
-    create_date = time
-    metadata_date = time
+    create_date = datetime
+    metadata_date = datetime
     size: Optional[int]
     width: Optional[int]
     height: Optional[int]
@@ -113,8 +117,8 @@ class MultimediaBase(BaseModel):
     path: str
     filename_as_delivered: str
     format: str
-    create_date = time
-    modify_date = time
+    create_date = datetime
+    modify_date = datetime
     license: Optional[str]
     source: Optional[str]
     owner_institution_code: Optional[str]

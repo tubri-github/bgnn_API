@@ -188,11 +188,12 @@ def minter(ark_type):
 
 # validate uploadfile
 def uploadFileValidation(file: UploadFile):
-    content_type = file.content_type.split("/")
+    # content_type = file.content_type.split("/")
+    format = file.filename.split(".")[1]
     content_size = len(file.file.read())
     validate_flag = False
     validate_error_msg = 'Uploaded file is not a valid image: '
-    if content_type[0] != 'image':
+    if format not in ['png','jpeg','jpg','bmp','gif']:
         validate_error_msg =validate_error_msg + 'Only JPEG/JPG/PNG/BMP/GIF files are allowed. '
         validate_flag = True
     if content_size > 20 * 1024 * 1024:

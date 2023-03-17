@@ -1,7 +1,8 @@
 # coding: utf-8
-from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String, Time
+from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String, Time, DateTime
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
 
 Base = declarative_base()
 metadata = Base.metadata
@@ -14,8 +15,8 @@ class Batch(Base):
     batch_name = Column(String)
     institution_code = Column(String)
     pipeline = Column(String)
-    create_date = Column(Time(True))
-    modify_date = Column(Time(True))
+    create_date = Column(DateTime(True), default=datetime.utcnow)
+    modify_date = Column(DateTime(True), default=datetime.utcnow, onupdate=datetime.utcnow)
     creator_comment = Column(String)
     contactor = Column(String)
     lab_code = Column(String)
@@ -26,6 +27,7 @@ class Batch(Base):
     dataset_name = Column(String)
     bibliographic_citation = Column(String)
     creator = Column(String)
+    supplement_path = Column(String)
 
     # ark_batch = relationship('Multimeida', back_populates="batch")
 
@@ -40,8 +42,8 @@ class Multimeida(Base):
     path = Column(String)
     filename_as_delivered = Column(String)
     format = Column(String)
-    create_date = Column(Time(True))
-    modify_date = Column(Time(True))
+    create_date = Column(DateTime(True),default=datetime.utcnow)
+    modify_date = Column(DateTime(True),default=datetime.utcnow,onupdate=datetime.utcnow)
     license = Column(String)
     source = Column(String)
     owner_institution_code = Column(String)
@@ -77,8 +79,8 @@ class ExtendedImageMetadatum(Base):
 
     ext_image_metadata_id = Column(String, primary_key=True)
     ark_id = Column(ForeignKey('multimeida.ark_id'), nullable=False)
-    create_date = Column(Time(True))
-    metadata_date = Column(Time(True))
+    create_date = Column(DateTime(True), default=datetime.utcnow)
+    metadata_date = Column(DateTime(True), default=datetime.utcnow, onupdate=datetime.utcnow)
     size = Column(BigInteger)
     width = Column(BigInteger)
     height = Column(BigInteger)

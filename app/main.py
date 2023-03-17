@@ -14,7 +14,7 @@ from urllib.parse import quote
 import aiofiles
 
 from fastapi import Depends, FastAPI, HTTPException, APIRouter, Response, Security, Request, Body, UploadFile, File, \
-    Path as F_Path, Query
+    Path as F_Path, Query, Form
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -177,6 +177,8 @@ async def read_multimedias(response: Response, api_key: str = Security(get_api_k
         - param zipfile: return JSON or Zip file
         - return: multimedia lists(with associated (meta)data). If zipfile is false, it will return 20 records(pagination will be added later)
     '''
+    if dataset == schemas.DatasetName.none:
+        dataset = None
     # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
     multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, family=family, dataset=dataset, zipfile=zipfile,institution=institution,
                                                     max_width=max_width,max_height=max_height,min_width=min_width,min_height=min_height,
@@ -212,6 +214,8 @@ async def read_multimedias(response: Response, genus: Optional[str] = None,
         - param zipfile: return JSON or Zip file
         - return: a list of 200 multimedias (with associated (meta)data). If zipfile is false, it will return 20 records
     '''
+    if dataset == schemas.DatasetName.none:
+        dataset = None
     # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
     multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, family=family, dataset=dataset, zipfile=zipfile,institution=institution,
                                                     max_width=max_width,max_height=max_height,min_width=min_width,min_height=min_height,
@@ -296,10 +300,16 @@ async def read_iqs(api_key: str = Security(get_api_key), skip: int = 0, limit: i
 
 
 @router.post("/batch/", tags=['Batch'], response_model=schemas.BatchMetadatum)
-async def create_batch(api_key: str = Security(get_api_key), institution: str = None, pipeline: schemas.Pipeline = None,
-                       creator: str = None, comment: Optional[str] = None, codeRepo: Optional[str] = None,
-                       url: Optional[str] = None,
-                       dataset: str = "fish", citation: Optional[str] = None,
+async def create_batch(api_key: str = Security(get_api_key),
+                       institution: str = Form(None),
+                       pipeline: schemas.Pipeline = Form(None),
+                       creator: str = Form(None),
+                       comment: Optional[str] = Form(None),
+                       codeRepo: Optional[str] = Form(None),
+                       url: Optional[str] = Form(None),
+                       dataset: str = Form("fish"),
+                       citation: Optional[str] = Form(None),
+                       supplement_file: Optional[UploadFile] = File(None, description="Upload supplement files"),
                        db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
@@ -314,10 +324,10 @@ async def create_batch(api_key: str = Security(get_api_key), institution: str = 
         - param citation: citation info
         - return: New Batch
     '''
-    batch = crud.create_batch(db, institution=institution, pipeline=pipeline,
+    batch = await crud.create_batch(db, institution=institution, pipeline=pipeline,
                               creator=creator, comment=comment, codeRepo=codeRepo, url=url,
-                              dataset=dataset, citation=citation)
-    if batch is None or batch is str:
+                              dataset=dataset, citation=citation, supplement_file = supplement_file)
+    if batch is None or isinstance(batch,str):
         raise HTTPException(status_code=404, detail="New batch creation failed. Please try again")
     return batch
 
@@ -368,17 +378,17 @@ async def get_batchlist(batch_ark_id: str, api_key: str = Security(get_api_key),
 
 # upload image & metadata together
 @router.post("/uploadImage/", tags=["Upload"])
-async def upload_image(batch_ark_id: str,
+async def upload_image(batch_ark_id: str = Form(...),
+                       scientific_name: str = Form(...),
+                       genus: str = Form(...),
+                       family: str = Form(...),
                        api_key: str = Security(get_api_key),
-                       file: UploadFile = File(..., description="file"),
-                       parent_ark_id: str = None,
-                       image_license: str = None,
-                       image_source: str = None,
-                       image_institution_code: str = None,
-                       scientific_name: str = None,
-                       genus: str = None,
-                       family: str = None,
-                       dataset: schemas.DatasetName = None,
+                       file: UploadFile = File(..., description="image file"),
+                       parent_ark_id: str = Form(None),
+                       image_license: str = Form(None),
+                       image_source: str = Form(None),
+                       image_institution_code: str = Form(None),
+                       dataset: schemas.DatasetName = Form(None),
                        db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
@@ -398,8 +408,10 @@ async def upload_image(batch_ark_id: str,
     image_validate_error = uploadFileValidation(file)
     if image_validate_error != '':
         raise HTTPException(status_code=400, detail=image_validate_error)
+    file.file.seek(0)
+    filesize = len(file.file.read())
     new_multimedia = await crud.create_multimedia(
-        db, file, batch_ark_id, parent_ark_id, image_license, image_source, image_institution_code,
+        db, file,filesize, batch_ark_id, parent_ark_id, image_license, image_source, image_institution_code,
         scientific_name, genus, family, dataset)
     if isinstance(new_multimedia,str):
         raise HTTPException(status_code=400, detail=new_multimedia)
