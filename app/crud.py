@@ -77,10 +77,11 @@ async def create_batch(db:Session,institution, pipeline,
         path = Path("/www/hdr/hdr-share/ftp/ark/89609/" + ark_id_obj[2] + "/supplement_file/")
         if not os.path.exists(path):
             os.makedirs(path)
-        file_name = Path(path, supplement_file.filename)
-        if not os.path.exists(file_name):
-            async with aiofiles.open(file_name, 'wb') as f:
-                await f.write(supplement_file.file.read())
+        if supplement_file is not None:
+            file_name = Path(path, supplement_file.filename)
+            if not os.path.exists(file_name):
+                async with aiofiles.open(file_name, 'wb') as f:
+                    await f.write(supplement_file.file.read())
 
     except Exception as error:
         return str("upload supplement failed:" + str(error))
@@ -95,7 +96,8 @@ async def create_batch(db:Session,institution, pipeline,
     new_batch.identifier = ark_id_obj[0] + '/' + ark_id_obj[1] + '/' + ark_id_obj[2]
     new_batch.dataset_name = dataset
     new_batch.bibliographic_citation = citation
-    new_batch.supplement_path = "https://fishair.org/hdr-share/ftp/ark/89609/" + ark_id_obj[2] + "/supplement_file/" + supplement_file.filename
+    if supplement_file is not None:
+        new_batch.supplement_path = "https://fishair.org/hdr-share/ftp/ark/89609/" + ark_id_obj[2] + "/supplement_file/" + supplement_file.filename
     try:
         db.add(new_batch)
         db.commit()
