@@ -6,7 +6,7 @@ from fastapi import UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from app.utils import minter
+from app.utils import minter, create_api_key
 import app.config as config
 from PIL import Image
 from pathlib import Path
@@ -68,11 +68,44 @@ def get_iqs(db: Session, skip: int = 0, limit: int = 100):
         .all()
     )
 
+#Peron
+def create_people(db:Session,first_name, last_name,
+                       email, purpose):
+    user = db.query(model_text.Person).filter(model_text.Person.email == email).first()
+    if user:
+        return {'detail': 'Email already exists'}
+    api_key = create_api_key()
+    user_id = str(uuid.uuid4())
+    user = model_text.Person(people_id=user_id, first_name=first_name, last_name=last_name, email=email, purpose=purpose, api_key=api_key)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"api_key": api_key}
+
+def get_people(db:Session, email):
+    user = db.query(model_text.Person).filter(model_text.Person.email == email).first()
+    if not user:
+        return {'detail': 'Email Not Found'}
+    api_key = user.api_key
+    return {"email":user.email,"api_key":api_key}
+
+def get_people_by_apikey(db:Session, api_key):
+    user = db.query(model_text.Person).filter(model_text.Person.api_key == api_key).first()
+    if not user:
+        return {'detail': 'API Key not valid'}
+    api_key = user.api_key
+    return {"api_key": api_key}
+
 #Batches
 async def create_batch(db:Session,institution, pipeline,
                        creator, comment, codeRepo, url,
-                       dataset, citation, supplement_file):
+                       dataset, citation, supplement_file,api_key):
     try:
+        user = db.query(model_text.Person).filter(model_text.Person.api_key == api_key).first()
+        if not user:
+            return {'detail': 'API Key not valid'}
+        creator_id = user.people_id
+        creator_name = user.first_name + ' ' + user.last_name
         ark_id_obj = minter(config.ARK_BATCH)
         path = Path("/www/hdr/hdr-share/ftp/ark/89609/" + ark_id_obj[2] + "/supplement_file/")
         if not os.path.exists(path):
@@ -89,7 +122,8 @@ async def create_batch(db:Session,institution, pipeline,
     new_batch = model_text.Batch(ark_id=ark_id_obj[2])
     new_batch.institution_code = institution
     new_batch.pipeline = pipeline
-    new_batch.creator = creator
+    new_batch.creator = creator_name
+    new_batch.creator_user_id = creator_id
     new_batch.creator_comment = comment
     new_batch.code_repository = codeRepo
     new_batch.url = url
@@ -309,3 +343,4 @@ def get_multimedia(db: Session, ark_id):
         return(results[0])
     else:
         return None
+

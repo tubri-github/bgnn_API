@@ -28,6 +28,7 @@ class Batch(Base):
     bibliographic_citation = Column(String)
     creator = Column(String)
     supplement_path = Column(String)
+    creator_user_id = Column(String)
 
     # ark_batch = relationship('Multimeida', back_populates="batch")
 
@@ -72,6 +73,8 @@ class Person(Base):
     last_login = Column(Time(True))
     lab = Column(String)
     supervisor_id = Column(String)
+    api_key = Column(String)
+    purpose = Column(String)
 
 
 class ExtendedImageMetadatum(Base):

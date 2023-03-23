@@ -52,15 +52,6 @@ app.add_middleware(
     allow_headers=["*"])
 
 
-async def get_api_key(
-        api_key_header: str = Security(api_key_header),
-):
-    if api_key_header in API_KEY:
-        return api_key_header
-    else:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED, detail="Invalid Token"
-        )
 
 
 # custom OpenAPI
@@ -118,6 +109,17 @@ def get_db():
     finally:
         db.close()
 
+async def get_api_key(db: Session = Depends(get_db),
+        api_key_header: str = Security(api_key_header)
+):
+    api_key_user = crud.get_people_by_apikey(db, api_key_header)
+    if 'api_key' in api_key_user.keys():
+        return api_key_user['api_key']
+    else:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED, detail="Invalid Token"
+        )
+
 
 # @app.post("/users/", response_model=schemas.User)
 # def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -152,14 +154,61 @@ def get_db():
 # def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 #     items = crud.get_items(db, skip=skip, limit=limit)
 #     return items
+@router.post("/create_your_key")
+async def generate_api_key(firstName:str = Form(...),lastName:str = Form(...), email:str=Form(...), purpose: str = Form(...),passcode: str = Form(...),
+                           db: Session = Depends(get_db)):
+    '''
+        PUBLIC METHOD
+        Create a new api key for yourself
+        - param firstName: your first name
+        - param lastName: your last_name
+        - param email: your email
+        - param purpose: what are you going to do with Fish-AIR dataset.
+        - param passcode: A passcode using in workshop only for generate everybody's own api key
+        - return: your own API KEY(Don't SHARE with others)
+    '''
+    if passcode != "Tu!TeMP1Key-workshop":
+        raise HTTPException(
+            status_code=404,
+            detail="Wrong public passcode",
+        )
+    results = crud.create_people(db, first_name=firstName, last_name= lastName, email=email, purpose=purpose)
+    if 'detail' in results.keys():
+        raise HTTPException(
+            status_code=400,
+            detail=results["detail"]
+        )
+    return results
 
+@router.post("/get_your_key")
+async def get_apikey(email:str=Form(...), passcode: str = Form(...),
+                           db: Session = Depends(get_db)):
+    '''
+        PUBLIC METHOD
+        Get the api key you created
+        - param email: your email
+        - param passcode: A passcode  using in workshop only for generate everybody's own api key
+        - return: your own API KEY(Don't SHARE with others)
+    '''
+    if passcode != "Tu!TeMP1Key-workshop":
+        raise HTTPException(
+            status_code=404,
+            detail="Wrong passcode",
+        )
+    results = crud.get_people(db, email=email)
+    if 'detail' in results.keys():
+        raise HTTPException(
+            status_code=400,
+            detail=results["detail"]
+        )
+    return results
 
 @router.get("/multimedias/", tags=["Multimedia"], response_model=List[schemas.MultimediaChild])
 # async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
 async def read_multimedias(response: Response, api_key: str = Security(get_api_key), genus: Optional[str] = None,
                            family: Optional[str] = None, dataset: Optional[List[schemas.DatasetName]] = Query(None), institution: Optional[str] = None,
-                           max_width: Optional[int] = None, min_width: Optional[int] = None ,max_height: Optional[int] = None,
-                           min_height: Optional[int] = None, batch_ark_id: Optional[str] = None,zipfile: bool = True,
+                           maxWidth: Optional[int] = None, minWidth: Optional[int] = None ,maxHeight: Optional[int] = None,
+                           minHeight: Optional[int] = None, batchARKID: Optional[str] = None,zipfile: bool = True,
                            db: Session = Depends(get_db)
                            ):
     '''
@@ -169,11 +218,11 @@ async def read_multimedias(response: Response, api_key: str = Security(get_api_k
         - param family: species family
         - param institution: institution code
         - param dataset: dataset name(multiple selection)
-        - param max_width: max width of image
-        - param min_width: min width of image
-        - param max_height: max height of image
-        - param min_height: min height of image
-        - param batch_ark_id: batch ARK ID
+        - param maxWidth: max width of image
+        - param minWidth: min width of image
+        - param maxHeight: max height of image
+        - param minHeight: min height of image
+        - param batchARKID: batch ARK ID
         - param zipfile: return JSON or Zip file
         - return: multimedia lists(with associated (meta)data). If zipfile is false, it will return 20 records(pagination will be added later)
     '''
@@ -181,8 +230,8 @@ async def read_multimedias(response: Response, api_key: str = Security(get_api_k
         dataset = None
     # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
     multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, family=family, dataset=dataset, zipfile=zipfile,institution=institution,
-                                                    max_width=max_width,max_height=max_height,min_width=min_width,min_height=min_height,
-                                                     batch_ark_id=batch_ark_id,limit=-1)
+                                                    max_width=maxWidth,max_height=maxHeight,min_width=minWidth,min_height=minHeight,
+                                                     batch_ark_id=batchARKID,limit=-1)
     if zipfile:
         # path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height,"limit": limit})
         path, filename = zipfile_generator(multimedia_res, batch_res,
@@ -195,8 +244,8 @@ async def read_multimedias(response: Response, api_key: str = Security(get_api_k
 # async def read_multimedias(response: Response, genus: Optional[str] = None, dataset: schemas.DatasetName = schemas.DatasetName.glindataset, min_height: Optional[int] = None, max_height: Optional[int] = None, limit: Optional[int] = None, zipfile: bool = True,
 async def read_multimedias(response: Response, genus: Optional[str] = None,
                            family: Optional[str] = None, dataset: Optional[List[schemas.DatasetName]] = Query(None), institution: Optional[str] = None,
-                           max_width: Optional[int] = None, min_width: Optional[int] = None ,max_height: Optional[int] = None,
-                           min_height: Optional[int] = None, batch_ark_id: Optional[str] = None,zipfile: bool = True,
+                           maxWidth: Optional[int] = None, minWidth: Optional[int] = None ,maxHeight: Optional[int] = None,
+                           minHeight: Optional[int] = None, batchARKID: Optional[str] = None,zipfile: bool = True,
                            db: Session = Depends(get_db)
                            ):
     '''
@@ -218,8 +267,8 @@ async def read_multimedias(response: Response, genus: Optional[str] = None,
         dataset = None
     # multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, dataset=dataset,min_height=min_height,max_height=max_height, limit=limit)
     multimedia_res, batch_res = crud.get_multimedias(db, genus=genus, family=family, dataset=dataset, zipfile=zipfile,institution=institution,
-                                                    max_width=max_width,max_height=max_height,min_width=min_width,min_height=min_height,
-                                                     batch_ark_id=batch_ark_id,limit=200)
+                                                    max_width=maxWidth,max_height=maxHeight,min_width=minWidth,min_height=minHeight,
+                                                     batch_ark_id=batchARKID,limit=200)
     if zipfile:
         # path, filename = zipfile_generator(multimedia_res, batch_res, params={"genus": genus, "dataset": dataset, "min_height": min_height, "max_height": max_height,"limit": limit})
         path, filename = zipfile_generator(multimedia_res, batch_res,
@@ -272,14 +321,14 @@ async def read_multimedias_public(response: Response, genus: Optional[str] = Non
 
 
 @router.get("/multimedia/{ark_id}", tags=["Multimedia"], response_model=schemas.MultimediaChild)
-async def read_multimedia_arkid(ark_id: str = 'qs243w0c', db: Session = Depends(get_db)):
+async def read_multimedia_arkid(ARKID: str = 'qs243w0c', db: Session = Depends(get_db)):
     '''
         PUBLIC METHOD
          get multimedia and associated (meta)data, like IQ, extended metadata, hirecachy medias by ARK ID
     - param arkid: ark id (exp: qs243w0c)
     - return: multimedia entity
     '''
-    iqs = crud.get_multimedia(db, ark_id=ark_id.strip())
+    iqs = crud.get_multimedia(db, ark_id=ARKID.strip())
     if iqs is None:
         raise HTTPException(status_code=404, detail="Image Not Found")
     return iqs
@@ -301,39 +350,43 @@ async def read_iqs(api_key: str = Security(get_api_key), skip: int = 0, limit: i
 
 @router.post("/batch/", tags=['Batch'], response_model=schemas.BatchMetadatum)
 async def create_batch(api_key: str = Security(get_api_key),
-                       institution: str = Form(None),
+                       institutionCode: str = Form(None),
+                       batchName: str = Form(None),
                        pipeline: schemas.Pipeline = Form(None),
                        creator: str = Form(None),
-                       comment: Optional[str] = Form(None),
-                       codeRepo: Optional[str] = Form(None),
-                       url: Optional[str] = Form(None),
-                       dataset: str = Form("fish"),
-                       citation: Optional[str] = Form(None),
-                       supplement_file: Optional[UploadFile] = File(None, description="Upload supplement files"),
+                       creatorComments: Optional[str] = Form(None),
+                       codeRepository: Optional[str] = Form(None),
+                       URL: Optional[str] = Form(None),
+                       datasetName: str = Form("fish"),
+                       bibliographicCitation: Optional[str] = Form(None),
+                       supplementFile: Optional[UploadFile] = File(None, description="Upload supplement files"),
                        db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
         create a new batch
-        - param institution: Institution Code
+        - param institutionCode: Institution Code
+        - param batchName: batch name
         - param pipeline: Source File/Bounding-Box/Segmentation/Landmark
         - param creator: creator name
-        - param comment: creator comment
-        - param codeRepo: code repository
-        - param url: dataset/citation/website url
-        - param dataset: fish(default)/bird/etc..
-        - param citation: citation info
+        - param creatorComments: creator comment
+        - param contactor: creator comment
+        - param codeRepository: code repository
+        - param URL: dataset/citation/website url
+        - param datasetName: fish(default)/bird/etc..
+        - param bibliographicCitation: citation info
+        - param supplementFile: supplement file
         - return: New Batch
     '''
-    batch = await crud.create_batch(db, institution=institution, pipeline=pipeline,
-                              creator=creator, comment=comment, codeRepo=codeRepo, url=url,
-                              dataset=dataset, citation=citation, supplement_file = supplement_file)
+    batch = await crud.create_batch(db, institution=institutionCode, pipeline=pipeline,
+                              creator=creator, comment=creatorComments, codeRepo=codeRepository, url=URL,
+                              dataset=datasetName, citation=bibliographicCitation, supplement_file= supplementFile,api_key= api_key)
     if batch is None or isinstance(batch,str):
         raise HTTPException(status_code=404, detail="New batch creation failed. Please try again")
     return batch
 
 
 @router.get("/batch/{batch_ark_id}", tags=['Batch'], response_model=schemas.BatchMetadatum)
-async def get_batch(batch_ark_id: str, api_key: str = Security(get_api_key),
+async def get_batch(batchARKID: str, api_key: str = Security(get_api_key),
                     db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
@@ -361,10 +414,11 @@ async def get_batchlist(batch_ark_id: str, api_key: str = Security(get_api_key),
         PRIVATE METHOD
         return all batches by user(later)
         - param institution: Institution Code
+        - param batchName: Batch name
         - param pipeline: Source File/Bounding-Box/Segmentation/Landmark
         - param creator: creator name
         - param comment: creator comment
-        - param codeRepo: code repository
+        - param codeRepository: code repository
         - param url: dataset/citation/website url
         - param dataset: fish(default)/bird/etc..
         - param citation: citation info
@@ -378,39 +432,39 @@ async def get_batchlist(batch_ark_id: str, api_key: str = Security(get_api_key),
 
 # upload image & metadata together
 @router.post("/uploadImage/", tags=["Upload"])
-async def upload_image(batch_ark_id: str = Form(...),
-                       scientific_name: str = Form(...),
+async def upload_image(batchARKID: str = Form(...),
+                       scientificName: str = Form(...),
                        genus: str = Form(...),
                        family: str = Form(...),
                        api_key: str = Security(get_api_key),
                        file: UploadFile = File(..., description="image file"),
-                       parent_ark_id: str = Form(None),
-                       image_license: str = Form(None),
-                       image_source: str = Form(None),
-                       image_institution_code: str = Form(None),
+                       parentARKID: str = Form(None),
+                       license: str = Form(None),
+                       source: str = Form(None),
+                       ownerInstitutionCode: str = Form(None),
                        dataset: schemas.DatasetName = Form(None),
                        db: Session = Depends(get_db)):
     '''
         PRIVATE METHOD
         upload files streaming
         - param: Image File (size < 20mb, image type：JPEG/JPG/PNG/BMP/GIF)
-        - param: batch_ark_id:
-        - param: parent_ark_id:
-        - param: image_license:
-        - param: image_source:
-        - param: image_institution_code:
-        - param: scientific_name:
+        - param: batch_ARKID:
+        - param: parentARKID:
+        - param: license:
+        - param: source:
+        - param: ownerInstitutionCode:
+        - param: scientificName:
         - param: genus:
         - param: family:
-        - param: dataset:
-        - return: upload success/failure and associate message:?
+        - param: dataset: (segmentation/landmark/boundingbox)
+        - return: upload success/failure and associate message
     '''
     image_validate_error = uploadFileValidation(file)
     if image_validate_error != '':
         raise HTTPException(status_code=400, detail=image_validate_error)
     new_multimedia = await crud.create_multimedia(
-        db, file, batch_ark_id, parent_ark_id, image_license, image_source, image_institution_code,
-        scientific_name, genus, family, dataset)
+        db, file, batchARKID, parentARKID, license, source, ownerInstitutionCode,
+        scientificName, genus, family, dataset)
     if isinstance(new_multimedia,str):
         raise HTTPException(status_code=400, detail=new_multimedia)
     return {
@@ -447,119 +501,119 @@ def calculate_md5(file):
 base_dir = os.path.dirname(os.path.abspath(__file__))
 upload_file_path = Path(base_dir, './uploads')
 
-
-@router.post("/file-slice")
-async def upload_file(
-        request: Request,
-        identifier: str = Body(..., description="md5"),
-        number: str = Body(..., description="slice no."),
-        file: UploadFile = File(..., description="file")
-):
-    """upload file slices"""
-    path = Path(upload_file_path, identifier)
-    if not os.path.exists(path):
-        os.makedirs(path)
-    file_name = Path(path, f'{identifier}_{number}')
-    if not os.path.exists(file_name):
-        async with aiofiles.open(file_name, 'wb') as f:
-            await f.write(await file.read())
-    return {
-        'code': 1,
-        'chunk': f'{identifier}_{number}'
-    }
-
-
-@router.put("/file-slice")
-async def merge_file(
-        request: Request,
-        name: str = Body(..., description="filename"),
-        file_type: str = Body(..., description="file-extension"),
-        identifier: str = Body(..., description="md5")
-):
-    """merge slices files"""
-    target_file_name = Path(upload_file_path, f'{name}.{file_type}')
-    path = Path(upload_file_path, identifier)
-    try:
-        async with aiofiles.open(target_file_name, 'wb+') as target_file:  # 打开目标文件
-            for i in range(len(os.listdir(path))):
-                temp_file_name = Path(path, f'{identifier}_{i}')
-                async with aiofiles.open(temp_file_name, 'rb') as temp_file:  # 按序打开每个分片
-                    data = await temp_file.read()
-                    await target_file.write(data)  # 分片内容写入目标文件
-    except Exception as e:
-        return {
-            'code': 0,
-            'error': f'merge failed：{e}'
-        }
-    shutil.rmtree(path)  # 删除临时目录
-    return {
-        'code': 1,
-        'name': f'{name}.{file_type}'
-    }
-
-
-@router.get("/file-slice/{file_name}")
-async def download_file(request: Request, file_name: str = F_Path(..., description="file name（extension included）")):
-    """download file slices，resumable"""
-    # 检查文件是否存在
-    file_path = Path(upload_file_path, file_name)
-    if not os.path.exists(file_path):
-        return {
-            'code': 0,
-            'error': 'file does not exist'
-        }
-    # 获取文件的信息
-    stat_result = os.stat(file_path)
-    content_type, encoding = guess_type(file_path)
-    content_type = content_type or 'application/octet-stream'
-    # 读取文件的起始位置和终止位置
-    range_str = request.headers.get('range', '')
-    range_match = re.search(r'bytes=(\d+)-(\d+)', range_str, re.S) or re.search(r'bytes=(\d+)-', range_str, re.S)
-    if range_match:
-        start_bytes = int(range_match.group(1))
-        end_bytes = int(range_match.group(2)) if range_match.lastindex == 2 else stat_result.st_size - 1
-    else:
-        start_bytes = 0
-        end_bytes = stat_result.st_size - 1
-    # 这里 content_length 表示剩余待传输的文件字节长度
-    content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
-    # 构建文件名称
-    name, *suffix = file_name.rsplit('.', 1)
-    suffix = f'.{suffix[0]}' if suffix else ''
-    filename = quote(f'{name}{suffix}')
-
-    return StreamingResponse(
-        file_iterator(file_path, start_bytes, 1024 * 1024 * 1),  # read 1mb everytime
-        media_type=content_type,
-        headers={
-            'content-disposition': f'attachment; filename="{filename}"',
-            'accept-ranges': 'bytes',
-            'connection': 'keep-alive',
-            'content-length': str(content_length),
-            'content-range': f'bytes {start_bytes}-{end_bytes}/{stat_result.st_size}',
-            'last-modified': formatdate(stat_result.st_mtime, usegmt=True),
-            'ETag': str(request.headers)
-        },
-        status_code=206 if start_bytes > 0 else 200
-    )
-
-
-def file_iterator(file_path, offset, chunk_size):
-    """
-    文件生成器
-    :param file_path: 文件绝对路径
-    :param offset: 文件读取的起始位置
-    :param chunk_size: 文件读取的块大小
-    :return: yield
-    """
-    with open(file_path, 'rb') as f:
-        f.seek(offset, os.SEEK_SET)
-        while True:
-            data = f.read(chunk_size)
-            if data:
-                yield data
-            else:
-                break
+#
+# @router.post("/file-slice")
+# async def upload_file(
+#         request: Request,
+#         identifier: str = Body(..., description="md5"),
+#         number: str = Body(..., description="slice no."),
+#         file: UploadFile = File(..., description="file")
+# ):
+#     """upload file slices"""
+#     path = Path(upload_file_path, identifier)
+#     if not os.path.exists(path):
+#         os.makedirs(path)
+#     file_name = Path(path, f'{identifier}_{number}')
+#     if not os.path.exists(file_name):
+#         async with aiofiles.open(file_name, 'wb') as f:
+#             await f.write(await file.read())
+#     return {
+#         'code': 1,
+#         'chunk': f'{identifier}_{number}'
+#     }
+#
+#
+# @router.put("/file-slice")
+# async def merge_file(
+#         request: Request,
+#         name: str = Body(..., description="filename"),
+#         file_type: str = Body(..., description="file-extension"),
+#         identifier: str = Body(..., description="md5")
+# ):
+#     """merge slices files"""
+#     target_file_name = Path(upload_file_path, f'{name}.{file_type}')
+#     path = Path(upload_file_path, identifier)
+#     try:
+#         async with aiofiles.open(target_file_name, 'wb+') as target_file:  # 打开目标文件
+#             for i in range(len(os.listdir(path))):
+#                 temp_file_name = Path(path, f'{identifier}_{i}')
+#                 async with aiofiles.open(temp_file_name, 'rb') as temp_file:  # 按序打开每个分片
+#                     data = await temp_file.read()
+#                     await target_file.write(data)  # 分片内容写入目标文件
+#     except Exception as e:
+#         return {
+#             'code': 0,
+#             'error': f'merge failed：{e}'
+#         }
+#     shutil.rmtree(path)  # 删除临时目录
+#     return {
+#         'code': 1,
+#         'name': f'{name}.{file_type}'
+#     }
+#
+#
+# @router.get("/file-slice/{file_name}")
+# async def download_file(request: Request, file_name: str = F_Path(..., description="file name（extension included）")):
+#     """download file slices，resumable"""
+#     # 检查文件是否存在
+#     file_path = Path(upload_file_path, file_name)
+#     if not os.path.exists(file_path):
+#         return {
+#             'code': 0,
+#             'error': 'file does not exist'
+#         }
+#     # 获取文件的信息
+#     stat_result = os.stat(file_path)
+#     content_type, encoding = guess_type(file_path)
+#     content_type = content_type or 'application/octet-stream'
+#     # 读取文件的起始位置和终止位置
+#     range_str = request.headers.get('range', '')
+#     range_match = re.search(r'bytes=(\d+)-(\d+)', range_str, re.S) or re.search(r'bytes=(\d+)-', range_str, re.S)
+#     if range_match:
+#         start_bytes = int(range_match.group(1))
+#         end_bytes = int(range_match.group(2)) if range_match.lastindex == 2 else stat_result.st_size - 1
+#     else:
+#         start_bytes = 0
+#         end_bytes = stat_result.st_size - 1
+#     # 这里 content_length 表示剩余待传输的文件字节长度
+#     content_length = stat_result.st_size - start_bytes if stat.S_ISREG(stat_result.st_mode) else stat_result.st_size
+#     # 构建文件名称
+#     name, *suffix = file_name.rsplit('.', 1)
+#     suffix = f'.{suffix[0]}' if suffix else ''
+#     filename = quote(f'{name}{suffix}')
+#
+#     return StreamingResponse(
+#         file_iterator(file_path, start_bytes, 1024 * 1024 * 1),  # read 1mb everytime
+#         media_type=content_type,
+#         headers={
+#             'content-disposition': f'attachment; filename="{filename}"',
+#             'accept-ranges': 'bytes',
+#             'connection': 'keep-alive',
+#             'content-length': str(content_length),
+#             'content-range': f'bytes {start_bytes}-{end_bytes}/{stat_result.st_size}',
+#             'last-modified': formatdate(stat_result.st_mtime, usegmt=True),
+#             'ETag': str(request.headers)
+#         },
+#         status_code=206 if start_bytes > 0 else 200
+#     )
+#
+#
+# def file_iterator(file_path, offset, chunk_size):
+#     """
+#     文件生成器
+#     :param file_path: 文件绝对路径
+#     :param offset: 文件读取的起始位置
+#     :param chunk_size: 文件读取的块大小
+#     :return: yield
+#     """
+#     with open(file_path, 'rb') as f:
+#         f.seek(offset, os.SEEK_SET)
+#         while True:
+#             data = f.read(chunk_size)
+#             if data:
+#                 yield data
+#             else:
+#                 break
 
 
 app.include_router(router)

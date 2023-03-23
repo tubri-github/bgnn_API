@@ -1,4 +1,7 @@
 import os
+import secrets
+import string
+
 import app.config as config
 import zipstream as zipstream
 import uuid
@@ -64,7 +67,7 @@ def zipfile_generator(results, batch_results, params):
 def csv_generator(results, type):
     data_count = 0
     if type == 'multimedia':
-        csv_header = "arkID,parentArkId,accessURI,createDate,modifyDate,fileNameAsDelivered,format,scientificName,genus,family,batchName,license,source,ownerInstitutionCode\n"
+        csv_header = "ARKID,parentArkId,accessURI,createDate,modifyDate,fileNameAsDelivered,format,scientificName,genus,family,batchName,license,source,ownerInstitutionCode\n"
         csv_body = ""
         for record in results:
             recstring = str(record.ark_id) + ',' + str(record.parent_ark_id) + ',' + str(
@@ -76,7 +79,7 @@ def csv_generator(results, type):
             data_count = data_count + 1
         return csv_header + csv_body, data_count
     if type == 'extended':
-        csv_header = "arkId,fileNameAsDelivered,format,createDate,metadataDate,size,width,height,license,publisher,ownerInstitutionCode\n"
+        csv_header = "ARKID,fileNameAsDelivered,format,createDate,metadataDate,size,width,height,license,publisher,ownerInstitutionCode\n"
         csv_body = ""
         for record in results:
             recstring = str(record.extended_metadata[0].ark_id) + ',\"' + str(record.filename_as_delivered) + '\",' + str(
@@ -90,7 +93,7 @@ def csv_generator(results, type):
             data_count = data_count + 1
         return csv_header + csv_body, data_count
     if type == 'quality':
-        csv_header = "arkID,license,publisher,ownerInstitutionCode,createDate,metadataDate,specimenQuantity," \
+        csv_header = "ARKID,license,publisher,ownerInstitutionCode,createDate,metadataDate,specimenQuantity," \
                      "containsScaleBar,containsLabel,accessionNumberValidity,containsBarcode,containsColorBar," \
                      "nonSpecimenObjects,partsOverlapping,specimenAngle,specimenView,specimenCurved,partsMissing," \
                      "allPartsVisible,partsFolded,brightness,uniformBackground,onFocus,colorIssue,quality," \
@@ -135,7 +138,7 @@ def batch_citation_generator(results):
     citation_body = ""
 
     # batch
-    csv_header = "arkId,batchName,institutionCode,pipeline,createDate,modifyDate,creator,creatorComments,contactor,labCode,projectName,codeRepository,datasetName,bibliographicCitation,URL\n "
+    csv_header = "ARKID,batchName,institutionCode,pipeline,createDate,modifyDate,creator,creatorComments,contactor,labCode,projectName,codeRepository,datasetName,bibliographicCitation,URL\n "
     csv_body = ""
     for record in results:
         recstring = str(record.ark_id) \
@@ -205,3 +208,8 @@ def uploadFileValidation(file: UploadFile):
         return validate_error_msg
     else:
         return ''
+
+# create api key with salt
+def create_api_key(length: int = 12):
+    salt = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(secrets.choice(salt) for _ in range(length))

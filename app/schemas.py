@@ -4,6 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from enum import Enum
 
+
 class ItemBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -37,6 +38,7 @@ class User(UserBase):
     class Config:
         orm_mode = True
 
+
 class DatasetName(str, Enum):
     glindataset = "GLIN"
     idigbioset = "iDigBio"
@@ -45,16 +47,19 @@ class DatasetName(str, Enum):
     bb = "bounding box"
     seg = "segmentation"
     lm = "landmark"
-    none=''
-
+    none = ''
 
 
 class Pipeline(str, Enum):
     bb = "bounding box"
     seg = "segmentation"
     lm = "landmark"
+
+
 class DatasetItem(BaseModel):
     name: DatasetName = None
+
+
 ##IQ##
 class IQBase(BaseModel):
     # ark_id: str
@@ -174,3 +179,24 @@ class MultimediaChild(MultimediaExtended):
 
 
 Multimedia.update_forward_refs()
+
+
+##Person##
+class PersonBase(BaseModel):
+    email: str
+    first_name: Optional[str]
+    last_name: Optional[str]
+    create_time: datetime
+    update_time: datetime
+    last_login: datetime
+    lab: Optional[str]
+    supervisor_id: Optional[str]
+    api_key: str
+    purpose: Optional[str]
+
+
+class Person(PersonBase):
+    people_id: str
+
+    class Config:
+        orm_mode = True
