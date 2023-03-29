@@ -1,4 +1,4 @@
-from datetime import time, datetime
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -136,8 +136,8 @@ class MultimediaBase(BaseModel):
 ##Batch
 class BatchBase(BaseModel):
     batch_name: Optional[str]
-    institution_code: str
-    pipeline: str
+    institution_code: Optional[str]
+    pipeline: Optional[str]
     # create_date: time
     # modify_date: time
     creator_comment: Optional[str]
@@ -145,7 +145,7 @@ class BatchBase(BaseModel):
     lab_code: Optional[str]
     project_name: Optional[str]
     url: Optional[str]
-    identifier: str
+    identifier: Optional[str]
     dataset_name: Optional[str]
     bibliographic_citation: Optional[str]
     creator: Optional[str]

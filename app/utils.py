@@ -1,25 +1,18 @@
+"""
+CURD parts
+!!!This section of code needs to be refactored and remove redundant parts.
+"""
 import os
 import secrets
 import string
-
+import hashlib
 import app.config as config
 import zipstream as zipstream
-import uuid
-import random
-from . import model_text
+
 from noid.pynoid import *
-from jinja2 import Template, FileSystemLoader, Environment
+from jinja2 import FileSystemLoader, Environment
 from datetime import datetime
-from fastapi import File,UploadFile
-
-
-## random + uuid generator
-def random_str(num=6):
-    uln = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    rs = random.sample(uln, num)
-    a = uuid.uuid1()
-    b = ''.join(rs + str(a).split("-"))
-    return b
+from fastapi import UploadFile
 
 
 def zipfile_generator(results, batch_results, params):
@@ -33,28 +26,30 @@ def zipfile_generator(results, batch_results, params):
         basicFilesTargetPath = os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', file).replace("\\", "/")
         zf.write(basicFilesSourcePath, basicFilesTargetPath, zipstream.ZIP_DEFLATED)
 
-    #multimedia.csv
+    # multimedia.csv
     multimedia_csv, multimedia_count = csv_generator(results, type="multimedia")
 
-    #extended md.csv
+    # extended md.csv
     extended_metadata_image_csv, extend_data_count = csv_generator(results, type="extended")
 
-    #IQ.csv
+    # IQ.csv
     quality_metadata_image_csv, quality_data_count = csv_generator(results, type="quality")
     batch_csv, citation_info = batch_citation_generator(batch_results)
-    metadata_xml = metadata_generator(dataset_ark_id,params, current_date )
+    metadata_xml = metadata_generator(dataset_ark_id, params, current_date)
     zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "multimedia.csv"), iterable(multimedia_csv))
-    zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "extendedImageMetadata.csv"), iterable(extended_metadata_image_csv))
+    zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "extendedImageMetadata.csv"),
+                  iterable(extended_metadata_image_csv))
     if quality_data_count > 0:
-        zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "imageQualityMetadata.csv"), iterable(quality_metadata_image_csv))
+        zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "imageQualityMetadata.csv"),
+                      iterable(quality_metadata_image_csv))
 
-    #batch
+    # batch
     zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "batch.csv"), iterable(batch_csv))
 
-    #citations
+    # citations
     zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "citations.txt"), iterable(citation_info))
 
-    #metadata.xml
+    # metadata.xml
     zf.write_iter(os.path.join('Fish-AIR/Tulane/' + dataset_ark_id + '/', "metadata.xml"), iterable(metadata_xml))
 
     zf.filename = "Fish-AIR_" + dataset_ark_id + ".zip"
@@ -67,22 +62,26 @@ def zipfile_generator(results, batch_results, params):
 def csv_generator(results, type):
     data_count = 0
     if type == 'multimedia':
-        csv_header = "ARKID,parentArkId,accessURI,createDate,modifyDate,fileNameAsDelivered,format,scientificName,genus,family,batchName,license,source,ownerInstitutionCode\n"
+        csv_header = "ARKID,parentArkId,accessURI,createDate,modifyDate,fileNameAsDelivered,format,scientificName," \
+                     "genus,family,batchName,license,source,ownerInstitutionCode\n "
         csv_body = ""
         for record in results:
             recstring = str(record.ark_id) + ',' + str(record.parent_ark_id) + ',' + str(
                 record.path) + ',' + str(record.create_date) + ',' + str(record.modify_date) + ',\"' + str(
-                record.filename_as_delivered) + '\",' + str(record.format) + ',\"' +\
-                       str(record.scientific_name)+'\",' + str(record.genus) + ',' + str(record.family) + ',' + str(record.batch_id) + ',' + str(record.license) + ',' + str(
+                record.filename_as_delivered) + '\",' + str(record.format) + ',\"' + \
+                        str(record.scientific_name) + '\",' + str(record.genus) + ',' + str(record.family) + ',' + str(
+                record.batch_id) + ',' + str(record.license) + ',' + str(
                 record.source) + ',' + str(record.owner_institution_code) + '\n'
             csv_body += recstring
             data_count = data_count + 1
         return csv_header + csv_body, data_count
     if type == 'extended':
-        csv_header = "ARKID,fileNameAsDelivered,format,createDate,metadataDate,size,width,height,license,publisher,ownerInstitutionCode\n"
+        csv_header = "ARKID,fileNameAsDelivered,format,createDate,metadataDate,size,width,height,license,publisher," \
+                     "ownerInstitutionCode\n "
         csv_body = ""
         for record in results:
-            recstring = str(record.extended_metadata[0].ark_id) + ',\"' + str(record.filename_as_delivered) + '\",' + str(
+            recstring = str(record.extended_metadata[0].ark_id) + ',\"' + str(
+                record.filename_as_delivered) + '\",' + str(
                 record.format) + ',' + str(record.extended_metadata[0].create_date) + ',' + str(
                 record.extended_metadata[0].metadata_date) + ',' + str(record.extended_metadata[0].size) + ',' + \
                         str(record.extended_metadata[0].width) + ',' + str(
@@ -132,13 +131,16 @@ def csv_generator(results, type):
                 data_count = data_count + 1
         return csv_header + csv_body, data_count
 
+
 def batch_citation_generator(results):
     # citations
-    citation_firstline = "Multimedia of Fish Specimen and associated metadata. Biology guided Neural Network. Tulane University Biodiversity Research Institute (https://bgnn.tulane.edu).\n"
+    citation_firstline = "Multimedia of Fish Specimen and associated metadata. Biology guided Neural Network. Tulane " \
+                         "University Biodiversity Research Institute (https://bgnn.tulane.edu).\n "
     citation_body = ""
 
     # batch
-    csv_header = "ARKID,batchName,institutionCode,pipeline,createDate,modifyDate,creator,creatorComments,contactor,labCode,projectName,codeRepository,datasetName,bibliographicCitation,URL\n "
+    csv_header = "ARKID,batchName,institutionCode,pipeline,createDate,modifyDate,creator,creatorComments,contactor," \
+                 "labCode,projectName,codeRepository,datasetName,bibliographicCitation,URL\n "
     csv_body = ""
     for record in results:
         recstring = str(record.ark_id) \
@@ -158,21 +160,25 @@ def batch_citation_generator(results):
                     + ',' + str(record.url) \
                     + '\n'
         csv_body += recstring
-
-        citation_body += record.bibliographic_citation + '\n'
+        if record.bibliographic_citation is not None:
+            citation_body += record.bibliographic_citation + '\n'
     batch_content = csv_header + csv_body
     citation_content = citation_firstline + citation_body
     return batch_content, citation_content
+
 
 def metadata_generator(dataset_ark_id, params, current_date):
     j2_loader = FileSystemLoader(config.ZIPFILES_PATH)
     env = Environment(loader=j2_loader)
     metadata_template = env.get_template('./metadata.xml')
-    metadata_content = metadata_template.render(dataset_ark_id = dataset_ark_id, query_params = params, accessDate=current_date)
+    metadata_content = metadata_template.render(dataset_ark_id=dataset_ark_id, query_params=params,
+                                                accessDate=current_date)
     return metadata_content
+
 
 def iterable(csv):
     yield str.encode(csv)
+
 
 # ark id generator
 # TU organization id : 89609
@@ -189,7 +195,8 @@ def minter(ark_type):
 
     return ark_obj
 
-# validate uploadfile
+
+# validate upload file
 def uploadFileValidation(file: UploadFile):
     # content_type = file.content_type.split("/")
     format = file.filename.split(".")[1]
@@ -198,8 +205,8 @@ def uploadFileValidation(file: UploadFile):
     file.file.seek(0)
     validate_flag = False
     validate_error_msg = 'Uploaded file is not a valid image: '
-    if format not in ['png','jpeg','jpg','bmp','gif']:
-        validate_error_msg =validate_error_msg + 'Only JPEG/JPG/PNG/BMP/GIF files are allowed. '
+    if format not in ['png', 'jpeg', 'jpg', 'bmp', 'gif']:
+        validate_error_msg = validate_error_msg + 'Only JPEG/JPG/PNG/BMP/GIF files are allowed. '
         validate_flag = True
     if content_size > 20 * 1024 * 1024:
         validate_error_msg = validate_error_msg + 'Image size should be within 20 MB '
@@ -209,7 +216,16 @@ def uploadFileValidation(file: UploadFile):
     else:
         return ''
 
+
 # create api key with salt
 def create_api_key(length: int = 12):
     salt = string.ascii_letters + string.digits + string.punctuation
     return ''.join(secrets.choice(salt) for _ in range(length))
+
+
+def calculate_md5(file):
+    file_hash = hashlib.md4()
+    while chunk := file.read(8192):
+        file_hash.update(chunk)
+    return file_hash.hexdigest()
+
